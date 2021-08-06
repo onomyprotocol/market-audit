@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: |
-      wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+        wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
 
   check-market:
     name: Check Market.tla
