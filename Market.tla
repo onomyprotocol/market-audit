@@ -25,9 +25,9 @@ SumSeq(s) ==    LET F[i \in 0..Len(s)] ==
                 IN  F[Len(s)]
 
 \* Sequence Helpers
-IGT(limitSeq, pos) ==   {i \in 0..Len(limitSeq): 
+IGT(limitSeq, pos) ==   {i \in DOMAIN limitSeq: 
                         limitSeq[i].exchrate > pos.exchrate}
-ILT(stopSeq, pos) ==    {i \in 0..Len(stopSeq): 
+ILT(stopSeq, pos) ==    {i \in DOMAIN stopSeq: 
                         stopSeq[i].exchrate < pos.exchrate}
 -----------------------------------------------------------------------------
 \* Three Coin Types. Two Denoms and NOM
@@ -167,7 +167,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
         bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
     IN 
-    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.amt) <= Cardinality(bag)
+    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.bag) <= Cardinality(bag)
         THEN
         /\  ask' = askCoin
         /\  bid' = bidCoin   
@@ -179,16 +179,16 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 THEN 
                     accounts' = 
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
-                        <<Append(pos, @[1]),@[2]>>]
+                        <<Append(@[1], pos),@[2]>>]
                 ELSE
                     accounts' =
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
                         <<InsertAt(@[1], Min(igt), pos),@[2]>>]
-            /\  LET igt == IGT(limits[bidCoin][askCoin], pos) IN
+            /\  LET igt == IGT(limits[<<{askCoin, bidCoin}, bidCoin>>], pos) IN
                 IF igt = {}
                 THEN    limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Append(pos, @)]
+                    Append(@, pos)]
                 ELSE    limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                     InsertAt(@, Min(igt), pos)]
@@ -199,18 +199,18 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 IF ilt = {}
                 THEN 
                     accounts' = 
-                        [accounts EXCEPT ![<<acct, bidCoin>>].positions[askCoin] =
-                        <<@[1], Append(pos, @[2])>>]
+                        [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
+                        <<@[1], Append(@[2], pos)>>]
                 ELSE
                     accounts' =
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
                         <<@[1], InsertAt(@[2], Max(ilt), pos)>>]
-            /\  LET ilt == ILT(stops[askCoin][bidCoin], pos) IN
+            /\  LET ilt == ILT(stops[<<{askCoin, bidCoin}, bidCoin>>], pos) IN
                 IF ilt = {}
                 THEN    
                     stops' =
                         [stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                        Append(pos, @)]
+                        Append(@, pos)]
                 ELSE
                     stops' =
                         [stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
@@ -229,20 +229,20 @@ Close(acct, askCoin, bidCoin, type, i) ==
         THEN       
             /\  limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Remove(@[1], pos)]
+                    Remove(@, pos[1])]
             /\  accounts' = [ 
                     accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
-                    <<Remove(@[1], pos),@[2]>>
+                    <<Remove(@, pos[1]),@[2]>>
                 ]
             /\  UNCHANGED << stops >> 
         ELSE    
             /\  stops' = [
                     stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Remove(@[2], pos)
+                    Remove(@, pos[2])
                 ]
             /\  accounts' = [ 
                     accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
-                    <<@[1], Remove(@[2], pos)>>
+                    <<@[1], Remove(@, pos[2])>>
                 ]
             /\  UNCHANGED << limits >>
 
@@ -266,7 +266,7 @@ NEXT == \/  \E acct \in ExchAccount :
             \E  bag \in SUBSET CoinBagger(bidCoin) :
                 \* select a non-empty bag of coins
              /\ bag # {}
-             /\ \/  Open(acct, askCoin, bidCoin, type, [
+             /\ \/  /\ Open(acct, askCoin, bidCoin, type, [
                         \* Position owner 
                         acct |-> acct,
                         \* Exchange Rate is defined as
@@ -274,12 +274,14 @@ NEXT == \/  \E acct \in ExchAccount :
                         exchrate |-> exchrate,
                         \* cardinality of bag is the amount
                         bag |-> bag
-                    ])
+                      ])
+                    /\ UNCHANGED reserve
                 \/  IF type = "limit" 
                     THEN 
-                    \E seq \in acct[bidCoin].positions[askCoin][1] :
+                    \* get the first sequence
+                    LET seq == accounts[acct][bidCoin].positions[askCoin][1] IN
                     /\  Len(seq) > 0
-                    /\  \E  i \in Len(seq) :    
+                    /\  \E  i \in DOMAIN seq :
                         /\  Close(
                                 acct,
                                 askCoin,
@@ -287,10 +289,12 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
+                        /\ UNCHANGED <<reserve, ask, bid>>
                     ELSE 
-                    \E seq \in acct[bidCoin].positions[askCoin][2] :
+                    \* get the second sequence
+                    LET seq == accounts[acct][bidCoin].positions[askCoin][2] IN
                     /\  Len(seq) > 0
-                    /\  \E  i \in Len(seq) :   
+                    /\  \E  i \in DOMAIN seq :   
                         /\  Close(
                                 acct,
                                 askCoin,
@@ -298,6 +302,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
+                        /\ UNCHANGED <<reserve, ask, bid>>
          
 Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 
