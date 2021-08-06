@@ -69,7 +69,8 @@ CoinRecords(ct) ==
     positions: [CoinType \ {ct} -> Seq(Seq(PositionType) \X Seq(PositionType))]                    
 ]
 
-CoinRecord == CoinRecords(Denom_A) \/ CoinRecords(Denom_B) \/ CoinRecords(NOM)
+CoinRecord ==
+  CoinRecords("Denom_A") \union CoinRecords("Denom_B") \union CoinRecords("NOM")
 
 -----------------------------------------------------------------------------
 
