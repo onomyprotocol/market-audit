@@ -25,9 +25,9 @@ SumSeq(s) ==    LET F[i \in 0..Len(s)] ==
                 IN  F[Len(s)]
 
 \* Sequence Helpers
-IGT(limitSeq, pos) ==   {i \in 0..Len(limitSeq): 
+IGT(limitSeq, pos) ==   {i \in DOMAIN limitSeq: 
                         limitSeq[i].exchrate > pos.exchrate}
-ILT(stopSeq, pos) ==    {i \in 0..Len(stopSeq): 
+ILT(stopSeq, pos) ==    {i \in DOMAIN stopSeq: 
                         stopSeq[i].exchrate < pos.exchrate}
 -----------------------------------------------------------------------------
 \* Three Coin Types. Two Denoms and NOM
@@ -160,7 +160,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
         bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
     IN 
-    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.amt) <= Cardinality(bag)
+    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.bag) <= Cardinality(bag)
         THEN
         /\  ask' = askCoin
         /\  bid' = bidCoin   
@@ -271,9 +271,10 @@ NEXT == \/  \E acct \in ExchAccount :
                     /\ UNCHANGED reserve
                 \/  IF type = "limit" 
                     THEN 
-                    \E seq \in acct[bidCoin].positions[askCoin][1] :
+                    \* get the first sequence
+                    LET seq == accounts[acct][bidCoin].positions[askCoin][1] IN
                     /\  Len(seq) > 0
-                    /\  \E  i \in Len(seq) :    
+                    /\  \E  i \in DOMAIN seq :
                         /\  Close(
                                 acct,
                                 askCoin,
@@ -283,9 +284,10 @@ NEXT == \/  \E acct \in ExchAccount :
                             )
                         /\ UNCHANGED reserve
                     ELSE 
-                    \E seq \in acct[bidCoin].positions[askCoin][2] :
+                    \* get the second sequence
+                    LET seq == accounts[acct][bidCoin].positions[askCoin][2] IN
                     /\  Len(seq) > 0
-                    /\  \E  i \in Len(seq) :   
+                    /\  \E  i \in DOMAIN seq :   
                         /\  Close(
                                 acct,
                                 askCoin,
