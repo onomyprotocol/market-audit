@@ -155,7 +155,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
     \* Exchange Account Balance of Bid Coin must not be less then than the
     \* total amounts in all positions for any particular pair with the Bid 
     \* Coin.
-    IF Cardinality(acct[bidCoin].bag) < Cardinality(UNION {
+    IF Cardinality({acct[bidCoin].bag}) < Cardinality(UNION {
        pos.bag,
        { limit.bag : limit \in ToSet(accounts[acct][bidCoin].positions[askCoin][1]) },
        { stop.bag : stop \in ToSet(accounts[acct][bidCoin].positions[askCoin][2]) }
@@ -262,7 +262,10 @@ NEXT == \/  \E acct \in ExchAccount :
             \E  bidCoin \in CoinType \ {askCoin} :
             \E  askRateBag \in CoinBagger(askCoin) :
             \E  bidRateBag \in CoinBagger(bidCoin) :
-            \E  exchrate \in { <<a, b>> : a \in SUBSET {askRateBag}, b \in SUBSET {bidRateBag} } : 
+            \E  exchrate \in { <<a, b>> : 
+                    a \in SUBSET {askRateBag}, 
+                    b \in SUBSET {bidRateBag} 
+                } : 
             \E  bag \in SUBSET CoinBagger(bidCoin) :
                 \* select a non-empty bag of coins
              /\ bag # {}
@@ -310,5 +313,5 @@ Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 THEOREM Spec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 06 12:24:56 CDT 2021 by Charles Dusek
+\* Last modified Fri Aug 06 13:14:49 CDT 2021 by Charles Dusek
 \* Created Sat Jul 31 19:33:47 CDT 2021 by Charles Dusek
