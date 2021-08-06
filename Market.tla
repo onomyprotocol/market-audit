@@ -259,7 +259,7 @@ NEXT == \/  \E acct \in ExchAccount :
             \E  bag \in SUBSET CoinBagger(bidCoin) :
                 \* select a non-empty bag of coins
              /\ bag # {}
-             /\ \/  Open(acct, askCoin, bidCoin, type, [
+             /\ \/  /\ Open(acct, askCoin, bidCoin, type, [
                         \* Position owner 
                         acct |-> acct,
                         \* Exchange Rate is defined as
@@ -267,7 +267,8 @@ NEXT == \/  \E acct \in ExchAccount :
                         exchrate |-> exchrate,
                         \* cardinality of bag is the amount
                         bag |-> bag
-                    ])
+                      ])
+                    /\ UNCHANGED reserve
                 \/  IF type = "limit" 
                     THEN 
                     \E seq \in acct[bidCoin].positions[askCoin][1] :
@@ -280,6 +281,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
+                        /\ UNCHANGED reserve
                     ELSE 
                     \E seq \in acct[bidCoin].positions[askCoin][2] :
                     /\  Len(seq) > 0
@@ -291,6 +293,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
+                        /\ UNCHANGED reserve    
          
 Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 
