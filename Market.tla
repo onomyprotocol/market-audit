@@ -252,25 +252,25 @@ Close(acct, askCoin, bidCoin, type, i) ==
         t == IF type = "limit" THEN 1 ELSE 2
         bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
-        pos == posSeqs[i]
+        pos == posSeqs[t][i]
     IN  IF t = 1
         THEN       
             /\  limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Remove(@, pos[1])]
+                    Remove(@, pos)]
             /\  accounts' = [ 
-                    accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
-                    <<Remove(@, pos[1]),@[2]>>
+                    accounts EXCEPT ![acct][bidCoin].positions[askCoin][1] = 
+                    Remove(@, pos)
                 ]
             /\  UNCHANGED << stops >> 
         ELSE    
             /\  stops' = [
                     stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Remove(@, pos[2])
+                    Remove(@, pos)
                 ]
             /\  accounts' = [ 
-                    accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
-                    <<@[1], Remove(@, pos[2])>>
+                    accounts EXCEPT ![acct][bidCoin].positions[askCoin][2] = 
+                    Remove(@, pos)
                 ]
             /\  UNCHANGED << limits >>
 
@@ -341,5 +341,5 @@ Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 THEOREM Spec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 06 13:53:26 CDT 2021 by Charles Dusek
+\* Last modified Fri Aug 06 14:04:03 CDT 2021 by Charles Dusek
 \* Created Sat Jul 31 19:33:47 CDT 2021 by Charles Dusek
