@@ -177,7 +177,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                     accounts' =
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
                         <<InsertAt(@[1], Min(igt), pos),@[2]>>]
-            /\  LET igt == IGT(limits[bidCoin][askCoin], pos) IN
+            /\  LET igt == IGT(limits[<<{askCoin, bidCoin}, bidCoin>>], pos) IN
                 IF igt = {}
                 THEN    limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
@@ -192,13 +192,13 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 IF ilt = {}
                 THEN 
                     accounts' = 
-                        [accounts EXCEPT ![<<acct, bidCoin>>].positions[askCoin] =
+                        [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
                         <<@[1], Append(@[2], pos)>>]
                 ELSE
                     accounts' =
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
                         <<@[1], InsertAt(@[2], Max(ilt), pos)>>]
-            /\  LET ilt == ILT(stops[askCoin][bidCoin], pos) IN
+            /\  LET ilt == ILT(stops[<<{askCoin, bidCoin}, bidCoin>>], pos) IN
                 IF ilt = {}
                 THEN    
                     stops' =
@@ -222,20 +222,20 @@ Close(acct, askCoin, bidCoin, type, i) ==
         THEN       
             /\  limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Remove(@[1], pos)]
+                    Remove(@, pos[1])]
             /\  accounts' = [ 
                     accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
-                    <<Remove(@[1], pos),@[2]>>
+                    <<Remove(@, pos[1]),@[2]>>
                 ]
             /\  UNCHANGED << stops >> 
         ELSE    
             /\  stops' = [
                     stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Remove(@[2], pos)
+                    Remove(@, pos[2])
                 ]
             /\  accounts' = [ 
                     accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
-                    <<@[1], Remove(@[2], pos)>>
+                    <<@[1], Remove(@, pos[2])>>
                 ]
             /\  UNCHANGED << limits >>
 
