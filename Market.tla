@@ -152,7 +152,11 @@ Withdraw(acct, bag, type) ==
 (* pos<PositionType>: Position                                             *)
 (***************************************************************************)
 Open(acct, askCoin, bidCoin, type, pos) == 
-    IF Cardinality(pos.bag) > Cardinality(UNION {
+    \* Exchange Account Balance of Bid Coin must not be less then than the
+    \* total amounts in all positions for any particular pair with the Bid 
+    \* Coin.
+    IF Cardinality(acct[bidCoin].bag) < Cardinality(UNION {
+       pos.bag,
        { limit.bag : limit \in ToSet(accounts[acct][bidCoin].positions[askCoin][1]) },
        { stop.bag : stop \in ToSet(accounts[acct][bidCoin].positions[askCoin][2]) }
     })
@@ -301,5 +305,5 @@ Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 THEOREM Spec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 06 12:17:57 CDT 2021 by Charles Dusek
+\* Last modified Fri Aug 06 12:24:56 CDT 2021 by Charles Dusek
 \* Created Sat Jul 31 19:33:47 CDT 2021 by Charles Dusek
