@@ -282,7 +282,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
-                        /\ UNCHANGED reserve
+                        /\ UNCHANGED <<reserve, ask, bid>>
                     ELSE 
                     \* get the second sequence
                     LET seq == accounts[acct][bidCoin].positions[askCoin][2] IN
@@ -295,7 +295,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
-                        /\ UNCHANGED reserve    
+                        /\ UNCHANGED <<reserve, ask, bid>>
          
 Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 
