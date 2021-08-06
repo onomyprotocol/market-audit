@@ -1,22 +1,45 @@
 name: Check TLA
 
 on:
-  # Triggers the workflow on push request events
+  # Triggers the workflow on push or pull request on master
   push:
-    branches: [ master ]
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
-  MC-TLC:
+  check-market:
+    name: Check Market.tla
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Fetch TLC
-        run: wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
-      - name: Set up JDK 1.8
-        uses: actions/setup-java@v1
+      - name: setup java
+        uses: actions/setup-java@v2
         with:
-          java-version: 1.8
-      - name: Run TLC on Market
-        run: java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg
-      - name: Run TLC on Market3
-        run: java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg
+          distribution: 'adopt'
+          java-version: '11'
+      - name: fetch TLC
+        run: |
+          wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+      - name: Check Market (TLC)
+        run: |
+          java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=1000
+
+  check-market3:
+    name: Check Market3.tla
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: fetch TLC
+        run: |
+          wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+      - name: Check Market3 (TLC)
+        run: |
+          java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=1000
