@@ -152,15 +152,15 @@ Withdraw(acct, bag, type) ==
 (* pos<PositionType>: Position                                             *)
 (***************************************************************************)
 Open(acct, askCoin, bidCoin, type, pos) == 
-    IF Cardinality(pos.bag) > Cardinality(accounts[acct][bidCoin].balance)
+    IF Cardinality(pos.bag) > Cardinality(accounts[acct][bidCoin].bag)
     THEN UNCHANGED << accounts, ask, bid, limits, stops >>
     ELSE
     LET 
         t == IF type = "limit" THEN 1 ELSE 2
-        balance == accounts[acct][bidCoin].balance
+        bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
     IN 
-    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.amt) <= Cardinality(balance)
+    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.amt) <= Cardinality(bag)
         THEN
         /\  ask' = askCoin
         /\  bid' = bidCoin   
@@ -215,7 +215,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
 Close(acct, askCoin, bidCoin, type, i) ==
     LET 
         t == IF type = "limit" THEN 1 ELSE 2
-        balance == accounts[acct][bidCoin].balance
+        bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
         pos == posSeqs[i]
     IN  IF t = 1
