@@ -172,7 +172,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 THEN 
                     accounts' = 
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
-                        <<Append(pos, @[1]),@[2]>>]
+                        <<Append(@[1], pos),@[2]>>]
                 ELSE
                     accounts' =
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
@@ -181,7 +181,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 IF igt = {}
                 THEN    limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                    Append(pos, @)]
+                    Append(@, pos)]
                 ELSE    limits' =
                     [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                     InsertAt(@, Min(igt), pos)]
@@ -193,7 +193,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 THEN 
                     accounts' = 
                         [accounts EXCEPT ![<<acct, bidCoin>>].positions[askCoin] =
-                        <<@[1], Append(pos, @[2])>>]
+                        <<@[1], Append(@[2], pos)>>]
                 ELSE
                     accounts' =
                         [accounts EXCEPT ![acct][bidCoin].positions[askCoin] =
@@ -203,7 +203,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 THEN    
                     stops' =
                         [stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
-                        Append(pos, @)]
+                        Append(@, pos)]
                 ELSE
                     stops' =
                         [stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
