@@ -33,11 +33,21 @@ ILT(stopSeq, pos) ==    {i \in 0..Len(stopSeq):
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
 
+PairTypePre == {{a, b} : a \in CoinType, b \in CoinType}
+PairType == { ptp \in PairTypePre : Cardinality(ptp) > 1 }
+PairPlusCoin == { <<pair, coin>> \in PairType \X CoinType : coin \in pair }
+
 \* Coins are held in bags of which whose Cardinality
 \* represents a balance or amount of coins
-CoinBag == SUBSET Denom_A \/ SUBSET Denom_B \/ SUBSET NOM
+CoinBag ==  SUBSET Denom_A 
+            \union  SUBSET Denom_B 
+            \union  SUBSET NOM
 
-ExchRateType == Seq(CoinBag \X CoinBag)
+ExchRateType == {<<a, b>> : a \in CoinBag, b \in CoinBag}
+
+CoinBagger(bidCoinType) ==  CASE    bidCoinType = "Denom_A" -> Denom_A
+                            []      bidCoinType = "Denom_B" -> Denom_B
+                            []      bidCoinType = "NOM" -> NOM 
 
 PositionType == 
 [
@@ -74,11 +84,11 @@ TypeInvariant ==
 /\  ask \in CoinType
     \* Bid Coin
 /\  bid \in CoinType
-    \* [Bid -> [Ask -> Limits]]
-/\  limits \in [CoinType -> [CoinType -> Seq(PositionType)]]
+    \* [<< -> Limits]]
+/\  limits \in [<<PairType, CoinType>> -> Seq(PositionType)]
 /\  reserve \in [CoinType -> CoinBag]
     \* [Bid -> [Ask -> Stops]]
-/\  stops \in [CoinType -> [CoinType -> Seq(PositionType)]]
+/\  stops \in [<<PairType, CoinType>> -> Seq(PositionType)]
 
 INIT ==     
 /\  accounts = [
@@ -91,19 +101,13 @@ INIT ==
     ]
 /\  ask = "NOM"
 /\  bid = "Coin_A"
-/\  limits \in [
-        bidCoin \in CoinType |-> 
-        [askCoin \in CoinType |-> << >>]
-    ]
+/\  limits = [ppc \in PairPlusCoin |-> <<>>]
 /\  reserve = [type \in CoinType |-> 
         CASE    type = "Denom_A" -> Denom_A        
         []      type = "Denom_B" -> Denom_B
         []      type = "NOM" -> NOM
     ]
-/\  stops \in [
-        bidCoin \in CoinType |-> 
-        [askCoin \in CoinType |-> << >>]
-    ]
+/\  stops =[ppc \in PairPlusCoin |-> <<>>] 
 
 (***************************************************************************)
 (* Deposit(acct, bag, type)                                                *)
@@ -120,6 +124,7 @@ Deposit(acct, bag, type) ==
         ]
     ]
 /\  reserve' = [reserve EXCEPT ![type] = @ \ bag]
+/\  UNCHANGED << ask, bid, limits, stops >>
 
 Withdraw(acct, bag, type) ==
 /\  bag \in SUBSET accounts[acct][type].bag
@@ -130,6 +135,7 @@ Withdraw(acct, bag, type) ==
         ]
     ]
 /\  reserve' = [reserve EXCEPT ![type] = @ \union bag]
+/\  UNCHANGED << ask, bid, limits, stops >>
 
 (***************************************************************************)
 (* Open(acct, askCoin, bidCoin, pos)                                       *)
@@ -173,10 +179,10 @@ Open(acct, askCoin, bidCoin, type, pos) ==
             /\  LET igt == IGT(limits[bidCoin][askCoin], pos) IN
                 IF igt = {}
                 THEN    limits' =
-                    [limits EXCEPT ![bidCoin][askCoin] =
+                    [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                     Append(pos, @)]
                 ELSE    limits' =
-                    [limits EXCEPT ![askCoin][bidCoin] =
+                    [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                     InsertAt(@, Min(igt), pos)]
             /\  UNCHANGED << stops >>
             \* ELSE type is stops
@@ -195,11 +201,11 @@ Open(acct, askCoin, bidCoin, type, pos) ==
                 IF ilt = {}
                 THEN    
                     stops' =
-                        [stops EXCEPT ![bidCoin][askCoin] =
+                        [stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                         Append(pos, @)]
                 ELSE
                     stops' =
-                        [stops EXCEPT ![bidCoin][askCoin] =
+                        [stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                         InsertAt(@, Max(ilt), pos)]
             /\  UNCHANGED << limits >>
         \* ELSE Balance is too low
@@ -214,7 +220,7 @@ Close(acct, askCoin, bidCoin, type, i) ==
     IN  IF t = 1
         THEN       
             /\  limits' =
-                    [limits EXCEPT ![bidCoin][askCoin] =
+                    [limits EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                     Remove(@[1], pos)]
             /\  accounts' = [ 
                     accounts EXCEPT ![acct][bidCoin].positions[askCoin] = 
@@ -223,7 +229,7 @@ Close(acct, askCoin, bidCoin, type, i) ==
             /\  UNCHANGED << stops >> 
         ELSE    
             /\  stops' = [
-                    stops EXCEPT ![bidCoin][askCoin] =
+                    stops EXCEPT ![<<{askCoin, bidCoin}, bidCoin>>] =
                     Remove(@[2], pos)
                 ]
             /\  accounts' = [ 
@@ -237,19 +243,32 @@ NEXT == \/  \E acct \in ExchAccount :
                 \/  \E bag \in SUBSET reserve[denom] :
                     IF Cardinality(bag) > 0 THEN
                         Deposit(acct, bag, denom)
-                    ELSE UNCHANGED <<accounts, reserve>>
+                    ELSE UNCHANGED <<accounts, ask, bid, limits, stops, reserve>>
                 \/  \E bag \in SUBSET accounts[acct][denom].bag :
                     IF Cardinality(bag) > 0 THEN
                         Withdraw(acct, bag, denom)
-                    ELSE UNCHANGED <<accounts, reserve>>
+                    ELSE UNCHANGED <<accounts, ask, bid, limits, stops, reserve>>
         \/  \E  acct \in ExchAccount :
+            \E  type \in {"limit", "stop"} :
             \E  askCoin \in CoinType :
             \E  bidCoin \in CoinType \ {askCoin} :
-            \E  pos \in PositionType :
-            \E  type \in {"limit", "stop"} :
-            \/  Open(acct, askCoin, bidCoin, type, pos)
-            \/  IF type = "limit" 
-                THEN 
+            \E  askRateBag \in CoinBagger(askCoin) :
+            \E  bidRateBag \in CoinBagger(bidCoin) :
+            \E  exchrate \in { <<a, b>> : a \in SUBSET {askRateBag}, b \in SUBSET {bidRateBag} } : 
+            \E  bag \in CoinBagger(bidCoin) :
+            IF  Cardinality(bag) > 0
+            THEN
+                \/  Open(acct, askCoin, bidCoin, type, [
+                        \* Position owner 
+                        acct |-> acct,
+                        \* Exchange Rate is defined as
+                        \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
+                        exchrate |-> exchrate,
+                        \* cardinality of bag is the amount
+                        bag |-> bag
+                    ])
+                \/  IF type = "limit" 
+                    THEN 
                     \E seq \in acct[bidCoin].positions[askCoin][1] :
                     /\  Len(seq) > 0
                     /\  \E  i \in Len(seq) :    
@@ -260,9 +279,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
-                        
-                                 
-                ELSE 
+                    ELSE 
                     \E seq \in acct[bidCoin].positions[askCoin][2] :
                     /\  Len(seq) > 0
                     /\  \E  i \in Len(seq) :   
@@ -273,6 +290,7 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
+            ELSE    UNCHANGED <<accounts, ask, bid, limits, stops, reserve>>
          
 Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 
@@ -280,5 +298,5 @@ Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 THEOREM Spec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Thu Aug 05 13:33:34 CDT 2021 by Charles Dusek
+\* Last modified Thu Aug 05 22:34:04 CDT 2021 by Charles Dusek
 \* Created Sat Jul 31 19:33:47 CDT 2021 by Charles Dusek
