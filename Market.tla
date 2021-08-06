@@ -21,8 +21,8 @@ VARIABLE    accounts,
 -----------------------------------------------------------------------------
 SumSeq(s) ==    LET F[i \in 0..Len(s)] ==
                     IF i = 0 THEN 0
-                    ELSE UNION { s[i].bag + F[i-1].bag }
-                IN  Cardinality(F[Len(s)])
+                    ELSE Cardinality(s[i].bag) + F[i - 1]
+                IN  F[Len(s)]
 
 \* Sequence Helpers
 IGT(limitSeq, pos) ==   {i \in 0..Len(limitSeq): 
@@ -255,14 +255,14 @@ NEXT == \/  \E acct \in ExchAccount :
             \E  askRateBag \in CoinBagger(askCoin) :
             \E  bidRateBag \in CoinBagger(bidCoin) :
             \E  exchrate \in { <<a, b>> : a \in SUBSET {askRateBag}, b \in SUBSET {bidRateBag} } : 
-            \E  bag \in CoinBagger(bidCoin) :
-            IF  Cardinality(bag) > 0
-            THEN
-                \/  Open(acct, askCoin, bidCoin, type, [
+            \E  bag \in SUBSET CoinBagger(bidCoin) :
+                \* select a non-empty bag of coins
+             /\ bag # {}
+             /\ \/  Open(acct, askCoin, bidCoin, type, [
                         \* Position owner 
                         acct |-> acct,
                         \* Exchange Rate is defined as
-                        \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
+                        \* Cardinality(exchrate[1]) / Cardinality(exchrate[2])
                         exchrate |-> exchrate,
                         \* cardinality of bag is the amount
                         bag |-> bag
@@ -290,7 +290,6 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
-            ELSE    UNCHANGED <<accounts, ask, bid, limits, stops, reserve>>
          
 Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 
