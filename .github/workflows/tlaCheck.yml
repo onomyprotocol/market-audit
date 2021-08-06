@@ -21,6 +21,7 @@ jobs:
   check-market:
     name: Check Market.tla
     runs-on: ubuntu-latest
+    needs: fetch-tlc
     steps:
       - uses: actions/checkout@v2
       - name: setup java
@@ -28,7 +29,6 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: '11'
-      - needs: fetch-tlc
       - name: Check Market (TLC)
         run: |
           java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=1000
@@ -36,6 +36,7 @@ jobs:
   check-market3:
     name: Check Market3.tla
     runs-on: ubuntu-latest
+    needs: fetch-tlc
     steps:
       - uses: actions/checkout@v2
       - name: setup java
@@ -43,7 +44,7 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: '11'
-      - needs: fetch-tlc
+
       - name: Check Market3 (TLC)
         run: |
           java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=1000
