@@ -21,8 +21,8 @@ VARIABLE    accounts,
 -----------------------------------------------------------------------------
 SumSeq(s) ==    LET F[i \in 0..Len(s)] ==
                     IF i = 0 THEN 0
-                    ELSE UNION { s[i].bag + F[i-1].bag }
-                IN  Cardinality(F[Len(s)])
+                    ELSE Cardinality(s[i].bag) + F[i - 1]
+                IN  F[Len(s)]
 
 \* Sequence Helpers
 IGT(limitSeq, pos) ==   {i \in 0..Len(limitSeq): 
@@ -69,7 +69,8 @@ CoinRecords(ct) ==
     positions: [CoinType \ {ct} -> Seq(Seq(PositionType) \X Seq(PositionType))]                    
 ]
 
-CoinRecord == CoinRecords(Denom_A) \/ CoinRecords(Denom_B) \/ CoinRecords(NOM)
+CoinRecord ==
+  CoinRecords("Denom_A") \union CoinRecords("Denom_B") \union CoinRecords("NOM")
 
 -----------------------------------------------------------------------------
 
@@ -151,15 +152,15 @@ Withdraw(acct, bag, type) ==
 (* pos<PositionType>: Position                                             *)
 (***************************************************************************)
 Open(acct, askCoin, bidCoin, type, pos) == 
-    IF Cardinality(pos.bag) > Cardinality(accounts[acct][bidCoin].balance)
+    IF Cardinality(pos.bag) > Cardinality(accounts[acct][bidCoin].bag)
     THEN UNCHANGED << accounts, ask, bid, limits, stops >>
     ELSE
     LET 
         t == IF type = "limit" THEN 1 ELSE 2
-        balance == accounts[acct][bidCoin].balance
+        bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
     IN 
-    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.amt) <= Cardinality(balance)
+    /\  IF  SumSeq(posSeqs[t]) + Cardinality(pos.amt) <= Cardinality(bag)
         THEN
         /\  ask' = askCoin
         /\  bid' = bidCoin   
@@ -214,7 +215,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
 Close(acct, askCoin, bidCoin, type, i) ==
     LET 
         t == IF type = "limit" THEN 1 ELSE 2
-        balance == accounts[acct][bidCoin].balance
+        bag == accounts[acct][bidCoin].bag
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
         pos == posSeqs[i]
     IN  IF t = 1
@@ -255,14 +256,14 @@ NEXT == \/  \E acct \in ExchAccount :
             \E  askRateBag \in CoinBagger(askCoin) :
             \E  bidRateBag \in CoinBagger(bidCoin) :
             \E  exchrate \in { <<a, b>> : a \in SUBSET {askRateBag}, b \in SUBSET {bidRateBag} } : 
-            \E  bag \in CoinBagger(bidCoin) :
-            IF  Cardinality(bag) > 0
-            THEN
-                \/  Open(acct, askCoin, bidCoin, type, [
+            \E  bag \in SUBSET CoinBagger(bidCoin) :
+                \* select a non-empty bag of coins
+             /\ bag # {}
+             /\ \/  Open(acct, askCoin, bidCoin, type, [
                         \* Position owner 
                         acct |-> acct,
                         \* Exchange Rate is defined as
-                        \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
+                        \* Cardinality(exchrate[1]) / Cardinality(exchrate[2])
                         exchrate |-> exchrate,
                         \* cardinality of bag is the amount
                         bag |-> bag
@@ -290,7 +291,6 @@ NEXT == \/  \E acct \in ExchAccount :
                                 type,
                                 i
                             )
-            ELSE    UNCHANGED <<accounts, ask, bid, limits, stops, reserve>>
          
 Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 
