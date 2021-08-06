@@ -14,13 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-java@v2
-      with:
-        distribution: 'adopt'
-        java-version: '11'
+      - name: setup java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
       - name: Fetch TLC
         run: wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
       - name: Run TLC on Market
-        run: java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=100
+        run: |
+          java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=100
       - name: Run TLC on Market3
-        run: java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=100
+        run: |
+          java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=100
