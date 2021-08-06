@@ -10,7 +10,17 @@ on:
       - master
 
 jobs:
-  MC-TLC:
+  # Download TLC
+  fetch-tlc:
+    name: Fetch TLC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+      wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+
+  # Check Market.tla in the simulation mode
+  check-market:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,11 +29,22 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: '11'
-      - name: Fetch TLC
-        run: wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
+      - needs: fetch-tlc
       - name: Check Market (TLC)
         run: |
           java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=1000
+
+  # Check Market3.tla in the simulation mode
+  check-market3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - needs: fetch-tlc
       - name: Check Market3 (TLC)
         run: |
           java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=1000
