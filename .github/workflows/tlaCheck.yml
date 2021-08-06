@@ -17,6 +17,6 @@ jobs:
         with:
           java-version: 1.8
       - name: Run TLC on Market
-        run: java -jar tla2tools.jar MCMarket.tla
+        run: java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg
       - name: Run TLC on Market3
-        run: java -jar tla2tools.jar MCMarket3.tla
+        run: java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg
