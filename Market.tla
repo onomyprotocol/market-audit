@@ -152,7 +152,10 @@ Withdraw(acct, bag, type) ==
 (* pos<PositionType>: Position                                             *)
 (***************************************************************************)
 Open(acct, askCoin, bidCoin, type, pos) == 
-    IF Cardinality(pos.bag) > Cardinality(accounts[acct][bidCoin].bag)
+    IF Cardinality(pos.bag) > Cardinality(UNION {
+       { limit.bag : limit \in ToSet(accounts[acct][bidCoin].positions[askCoin][1]) },
+       { stop.bag : stop \in ToSet(accounts[acct][bidCoin].positions[askCoin][2]) }
+    })
     THEN UNCHANGED << accounts, ask, bid, limits, stops >>
     ELSE
     LET 
@@ -298,5 +301,5 @@ Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 THEOREM Spec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Thu Aug 05 22:34:04 CDT 2021 by Charles Dusek
+\* Last modified Fri Aug 06 12:17:57 CDT 2021 by Charles Dusek
 \* Created Sat Jul 31 19:33:47 CDT 2021 by Charles Dusek
