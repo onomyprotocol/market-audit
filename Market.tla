@@ -24,11 +24,39 @@ SumSeq(s) ==    LET F[i \in 0..Len(s)] ==
                     ELSE Cardinality(s[i].bag) + F[i - 1]
                 IN  F[Len(s)]
 
+\* Nat tuple (numerator/denominator) inequality helper functions
+\* All equalities assume Natural increments
+GT(a, b) ==     IF a[1]*b[2] > a[2]*b[1] THEN TRUE ELSE FALSE
+
+GTE(a, b) ==    IF a[1]*b[2] >= a[2]*b[1] THEN TRUE ELSE FALSE 
+
+LT(a, b) ==     IF a[1]*b[2] < a[2]*b[1] THEN TRUE ELSE FALSE
+
+LTE(a, b) ==    IF a[1]*b[2] <= a[2]*b[1] THEN TRUE ELSE FALSE
+
 \* Sequence Helpers
 IGT(limitSeq, pos) ==   {i \in DOMAIN limitSeq: 
-                        limitSeq[i].exchrate > pos.exchrate}
+                        GT(
+                            <<
+                                Cardinality(limitSeq[i].exchrate[1]),
+                                Cardinality(limitSeq[i].exchrate[2])
+                            >>,
+                            <<
+                                Cardinality(pos.exchrate[1]),
+                                Cardinality(pos.exchrate[2])
+                            >>
+                        )}
 ILT(stopSeq, pos) ==    {i \in DOMAIN stopSeq: 
-                        stopSeq[i].exchrate < pos.exchrate}
+                        LT(
+                            <<
+                                Cardinality(stopSeq[i].exchrate[1]),
+                                Cardinality(stopSeq[i].exchrate[2])
+                            >>,
+                            <<
+                                Cardinality(pos.exchrate[1]),
+                                Cardinality(pos.exchrate[2])
+                            >>
+                        )}
 -----------------------------------------------------------------------------
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
@@ -155,7 +183,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
     \* Exchange Account Balance of Bid Coin must not be less then than the
     \* total amounts in all positions for any particular pair with the Bid 
     \* Coin.
-    IF Cardinality({acct[bidCoin].bag}) < Cardinality(UNION {
+    IF Cardinality(accounts[acct][bidCoin].bag) < Cardinality(UNION {
        pos.bag,
        { limit.bag : limit \in ToSet(accounts[acct][bidCoin].positions[askCoin][1]) },
        { stop.bag : stop \in ToSet(accounts[acct][bidCoin].positions[askCoin][2]) }
@@ -313,5 +341,5 @@ Spec == INIT /\ [][NEXT]_<<accounts, ask, bid, limits, reserve, stops>>
 THEOREM Spec => []TypeInvariant
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 06 13:14:49 CDT 2021 by Charles Dusek
+\* Last modified Fri Aug 06 13:53:26 CDT 2021 by Charles Dusek
 \* Created Sat Jul 31 19:33:47 CDT 2021 by Charles Dusek
