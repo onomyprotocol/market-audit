@@ -21,9 +21,9 @@ jobs:
           java-version: '11'
       - name: Fetch TLC
         run: wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
-      - name: Run TLC on Market
+      - name: Check Market (TLC)
         run: |
-          java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=100
-      - name: Run TLC on Market3
+          java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=1000
+      - name: Check Market3 (TLC)
         run: |
-          java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=100
+          java -jar tla2tools.jar MCMarket3.tla -config MCMarket3.cfg -simulate num=1000
