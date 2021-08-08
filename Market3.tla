@@ -44,7 +44,7 @@ CoinRecords(ct) == [
                     
               ]
 
-CoinRecord == CoinRecords("Denom_A") \/ CoinRecords("Denom_B") \/ CoinRecords("NOM") 
+CoinRecord == CoinRecords("Denom_A") \union CoinRecords("Denom_B") \union CoinRecords("NOM") 
 
 TypeInvariant ==     
 /\  accounts \in [
@@ -82,7 +82,7 @@ LET type == bag[1]
 IN  /\  amount <= reserve[type]
     /\  accounts' = [accounts EXCEPT ![acct][type] = 
             [
-                bag |-> @.bag + amount,
+                bag |-> << type, @.bag[2] + amount >>,
                 positions |-> @.positions
             ]
         ]
@@ -92,10 +92,10 @@ Withdraw(acct, bag) ==
 LET type == bag[1]
     amount == bag[2]
 IN
-    /\  amount <= accounts[acct][type].bag
+    /\  amount <= accounts[acct][type].bag[2]
     /\  accounts' = [accounts EXCEPT ![acct][type] = 
             [
-                bag |-> @.bag - amount,
+                bag |-> << type, @.bag[2] - amount >>,
                 positions |-> @.positions
             ]
         ]
