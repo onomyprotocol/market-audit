@@ -5,14 +5,21 @@ CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
 
 VARIABLE    accounts,
-            \* The reserve holds the initial bags
-            reserve
+\* Ask coin
+            ask,
+            \* Bid coin
+            bid,
+            \* Limit Books
+            limits,
+            \* The reserve holds the initial amounts
+            reserve,
+            \* Stop Books
+            stops
 
 -----------------------------------------------------------------------------
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
 
-\* A coinbag holds coins of exactly one of NOM, Denom_A, Denom_B
 
 Amounts == 0..MaxAmount
 
@@ -20,27 +27,35 @@ NomCoins == {"NOM"}     \X Amounts
 ACoins   == {"Denom_A"} \X Amounts
 BCoins   == {"Denom_B"} \X Amounts
 
-CoinBag == NomCoins \union ACoins \union BCoins
+\* A coinamount holds coins of exactly one of NOM, Denom_A, Denom_B
+CoinAmount == NomCoins \union ACoins \union BCoins
 
-\* bags are pairs <<type, amount>>
-BagType(b) == b[1]  
-BagAmount(b) == b[2]
+\* amounts are pairs <<type, amount>>
+AmountType(b) == b[1]  
+AmountAmount(b) == b[2]
 
-Position == 
+PairTypePre == {{a, b} : a \in CoinType, b \in CoinType}
+PairType == { ptp \in PairTypePre : Cardinality(ptp) > 1 }
+PairPlusCoin == { <<pair, coin>> \in PairType \X CoinType : coin \in pair }
+
+ExchRateType == {<<a, b>> : a \in CoinAmount, b \in CoinAmount}
+
+PositionType == 
 [
+    acct: ExchAccount,
     \* Exchange Rate is defined as
     \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
-    exchrate: Seq(CoinBag \X CoinBag),
-    \* cardinality of bag is the amount
-    bag: CoinBag
+    exchrate: ExchRateType,
+    \* cardinality of amount is the amount
+    amount: CoinAmount
 ]
 
 CoinRecords(ct) == [
-                \* Holds a bag (set) of coins
-                \* Balances are represented by Cardinality of bag
+                \* Holds a amount (set) of coins
+                \* Balances are represented by Cardinality of amount
                 \* So, in implementation, consider this balance
-                bag: CoinBag,
-                positions: [CoinType -> Seq(Seq(Position) \X Seq(Position))]
+                amount: CoinAmount,
+                positions: [CoinType -> Seq(Seq(PositionType) \X Seq(PositionType))]
                     
               ]
 
@@ -53,66 +68,101 @@ TypeInvariant ==
           \A ct \in CoinType: f[ct] \in CoinRecords(ct)
         }
       ]
-/\  reserve \in [CoinType -> CoinBag]
+/\  ask \in CoinType
+    \* Bid Coin
+/\  bid \in CoinType
+    \* [<< -> Limits]]
+/\  limits \in [Seq(PairType \X CoinType) -> Seq(PositionType)]
+/\  reserve \in [CoinType -> CoinAmount]
+/\  stops \in [Seq(PairType \X CoinType) -> Seq(PositionType)]
 
 INIT ==     
 /\  accounts = [
         ea \in ExchAccount |-> [ 
             ct \in CoinType |-> [
-                bag |-> << ct, 0 >>, 
+                amount |-> << ct, 0 >>, 
                 positions |-> [c \in CoinType \ {ct} |-> << <<>>, <<>> >>]
             ]
         ]
     ]
+/\  ask = "NOM"
+/\  bid = "Coin_A"
+/\  limits = [ppc \in PairPlusCoin |-> <<>>]
 /\  reserve = [type \in CoinType |->
         CASE    type = "Denom_A" -> MaxAmount        
         []      type = "Denom_B" -> MaxAmount
         []      type = "NOM" -> MaxAmount
     ]
+/\  stops =[ppc \in PairPlusCoin |-> <<>>] 
+
 
 (***************************************************************************)
-(* Deposit(acct, bag, type)                                                *)
+(* Deposit(acct, amount, type)                                                *)
 (*                                                                         *)
 (* The Deposit function takes a SUBSET of coins from a single type and     *)
 (* the reserve and places it into an exchange account.                     *)
 (***************************************************************************)
-Deposit(acct, bag) ==
-LET type == bag[1]
-    amount == bag[2]
-IN  /\  amount <= reserve[type]
+Deposit(acct, amount) ==
+LET type == amount[1]
+    amt == amount[2]
+IN  /\  amt <= reserve[type]
     /\  accounts' = [accounts EXCEPT ![acct][type] = 
             [
-                bag |-> << type, @.bag[2] + amount >>,
+                amount |-> << type, @.amount[2] + amt >>,
                 positions |-> @.positions
             ]
         ]
-    /\  reserve' = [reserve EXCEPT ![type] = @ - amount]
+    /\  reserve' = [reserve EXCEPT ![type] = @ - amt]
+    /\  UNCHANGED << ask, bid, limits, stops >>
 
-Withdraw(acct, bag) ==
-LET type == bag[1]
-    amount == bag[2]
+Withdraw(acct, amount) ==
+LET type == amount[1]
+    amt == amount[2]
 IN
-    /\  amount <= accounts[acct][type].bag[2]
+    /\  amt <= accounts[acct][type].amount[2]
     /\  accounts' = [accounts EXCEPT ![acct][type] = 
             [
-                bag |-> << type, @.bag[2] - amount >>,
+                amount |-> << type, @.amount[2] - amt >>,
                 positions |-> @.positions
             ]
         ]
-    /\  reserve' = [reserve EXCEPT ![type] = @ + amount]
+    /\  reserve' = [reserve EXCEPT ![type] = @ + amt]
+    /\  UNCHANGED << ask, bid, limits, stops >>
 
 NEXT == \/  \E acct \in ExchAccount :
             \E type \in CoinType :
-                \/  \E bagAmount \in Amounts :
-                    IF bagAmount > 0 THEN
-                        Deposit(acct, <<type, bagAmount>>)
-                    ELSE UNCHANGED <<accounts, reserve>>
-                \/  \E bagAmount \in Amounts :
-                    IF bagAmount > 0 THEN
-                        Withdraw(acct, <<type, bagAmount>>)
-                    ELSE UNCHANGED <<accounts, reserve>>
+                \/  \E amount \in Amounts :
+                    IF amount > 0 THEN
+                        Deposit(acct, <<type, amount>>)
+                    ELSE UNCHANGED <<
+                            accounts, 
+                            ask,
+                            bid,
+                            limits, 
+                            reserve,
+                            stops
+                        >>
+                \/  \E amount \in Amounts :
+                    IF amount > 0 THEN
+                        Withdraw(acct, <<type, amount>>)
+                    ELSE UNCHANGED <<
+                            accounts, 
+                            ask,
+                            bid,
+                            limits, 
+                            reserve,
+                            stops
+                        >>
          
-Spec == INIT /\ [][NEXT]_<<accounts, reserve>>
+Spec == INIT /\ 
+        [][NEXT]_<<
+            accounts,
+            ask,
+            bid,
+            limits, 
+            reserve,
+            stops
+          >>
 
 -----------------------------------------------------------------------------
 THEOREM Spec => []TypeInvariant
