@@ -39,6 +39,10 @@ ILT(stopSeq, pos) ==    {i \in DOMAIN stopSeq:
                                 pos.exchrate
                             )}
 
+\* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
+\* all of the position amounts. Returns 0 if seq is empty.
+SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
+
 
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
@@ -71,7 +75,7 @@ CoinRecords(ct) == [
                 \* Balances are represented by Cardinality of amount
                 \* So, in implementation, consider this balance
                 amount: Amounts,
-                positions: [CoinType -> Seq(Seq(PositionType) \X Seq(PositionType))]
+                positions: [CoinType \ {ct} -> Seq(PositionType) \X Seq(PositionType)]
                     
               ]
 
@@ -87,9 +91,11 @@ TypeInvariant ==
 /\  ask \in CoinType
     \* Bid Coin
 /\  bid \in CoinType
-/\  limits \in [Seq(PairType \X CoinType) -> Seq(PositionType)]
+\* The domain of limits is not the general set of sequences, but its subset PairPlusCoin
+/\  limits \in [PairPlusCoin -> Seq(PositionType)]
 /\  reserve \in [CoinType -> Amounts]
-/\  stops \in [Seq(PairType \X CoinType) -> Seq(PositionType)]
+\* The domain of stops is not the general set of sequences, but its subset PairPlusCoin
+/\  stops \in [PairPlusCoin -> Seq(PositionType)]
 
 INIT ==     
 /\  accounts = [
@@ -101,7 +107,7 @@ INIT ==
         ]
     ]
 /\  ask = "NOM"
-/\  bid = "Coin_A"
+/\  bid = "Denom_A"
 /\  limits = [ppc \in PairPlusCoin |-> <<>>]
 /\  reserve = [type \in CoinType |->
         CASE    type = "Denom_A" -> MaxAmount        
@@ -144,17 +150,10 @@ Open(acct, askCoin, bidCoin, type, pos) ==
     \* Exchange Account Balance of Bid Coin must not be less then than the
     \* total amounts in all positions for any particular pair with the Bid 
     \* Coin.
-    IF  accounts[acct][bidCoin].amount < 
-        pos.amount + 
-        IF Len(positions[1]) > 0 THEN
-            IF Len(positions[2]) > 0
-            THEN Sum(positions[1]) + Sum(positions[2])
-            ELSE Sum(positions[1])
-        ELSE
-            IF Len(positions[2]) > 0
-            THEN Sum(positions[2])
-            ELSE 0
-        
+    IF  accounts[acct][bidCoin].amount <
+        \* Sum all amounts in positions[1] and positions[2]. If either is an empty
+        \* sequence, SumSeqPos returns 0.
+        pos.amount + SumSeqPos(positions[1]) + SumSeqPos(positions[2])
 
     THEN UNCHANGED << accounts, ask, bid, limits, stops >>
     ELSE
@@ -163,7 +162,7 @@ Open(acct, askCoin, bidCoin, type, pos) ==
         amount == accounts[acct][bidCoin].amount
         posSeqs == accounts[acct][bidCoin].positions[askCoin]
     IN 
-    /\  IF  Sum(posSeqs[t]) + pos.amount <= amount
+    /\  IF  SumSeqPos(posSeqs[t]) + pos.amount <= amount
         THEN
         /\  ask' = askCoin
         /\  bid' = bidCoin   
