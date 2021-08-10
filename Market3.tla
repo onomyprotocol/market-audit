@@ -122,14 +122,14 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
             THEN
                 LET igt == IGT(seqOfPos, pos) IN
                 /\ limits' = [ limits EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
-                        IF igt = {} THEN Append(@, pos) ELSE InsertAt(@, Min(igt), pos)
+                        IF igt = {} THEN Append(@, pos) ELSE InsertAt(@, Cardinality(igt) + 1, pos)
                     ] 
                 /\ UNCHANGED stops
             \* ELSE type is stops
             ELSE
                 LET ilt == ILT(seqOfPos, pos) IN
                 /\ stops' = [ stops EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
-                        IF ilt = {} THEN Append(@, pos) ELSE InsertAt(@, Max(ilt), pos)
+                        IF ilt = {} THEN Append(@, pos) ELSE InsertAt(@, Cardinality(ilt) + 1, pos)
                     ] 
                 /\  UNCHANGED limits
     /\ UNCHANGED << accounts, reserve >>
