@@ -12,6 +12,8 @@ VARIABLE    accounts,
             \* Stop Books
             stops
 
+vars == <<accounts, limits, reserve, stops>>
+
 -----------------------------------------------------------------------------
 \* Nat tuple (numerator/denominator) inequality helper functions
 \* All equalities assume Natural increments
@@ -49,6 +51,10 @@ PositiveAmounts == 1..MaxAmount
 
 PairTypePre == {{a, b} : a \in CoinType, b \in CoinType}
 PairType == { ptp \in PairTypePre : Cardinality(ptp) > 1 }
+
+\* The set {<<{x,y},z>>: x,y \in S /\ x != y /\ ( z = x \/ z = y )} is 
+\* isomorphic to { <<s,t>>: s,t \in S /\ s != t }, 
+\* consider using <<a,b>> instead of <<{a,b},b>>
 PairPlusCoin == { <<pair, coin>> \in PairType \X CoinType : coin \in pair }
 
 ExchRateType == {<<a, b>> : a \in Amounts, b \in Amounts}
@@ -59,7 +65,7 @@ PositionType ==
     \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
     exchrate: ExchRateType,
     \* cardinality of amount is the amount
-    amount: Amounts
+    amount: PositiveAmounts
 ]
 
 TypeInvariant ==  
@@ -154,37 +160,71 @@ NEXT ==
         \/  \E  limitOrStop \in {"limit", "stop"} :
             \E  askCoin \in CoinType :
             \E  bidCoin \in CoinType \ {askCoin} :
-            \E  exchrate \in Amounts \X Amounts: \* Amounts or PositiveAmounts?
-            \E  bidAmount \in PositiveAmounts :
-                \/  Open(acct, askCoin, bidCoin, limitOrStop, [
+            \/  \E  exchrate \in Amounts \X PositiveAmounts: \* what is exchrate 0 / x ?
+                \E  bidAmount \in PositiveAmounts :
+                    Open(acct, askCoin, bidCoin, limitOrStop, [
                         \* Exchange Rate is defined as
-                        \* Cardinality(exchrate[1]) / Cardinality(exchrate[2])
+                        \* exchrate[1] / exchrate[2]
                         exchrate |-> exchrate,
-                        \* cardinality of bag is the amount
                         amount |-> bidAmount
                       ])
                 \*  Close
-                \/  LET seq ==  IF limitOrStop = "limit"
-                                THEN limits[acct, <<{askCoin,bidCoin}, bidCoin>>]
-                                ELSE stops[acct, <<{askCoin,bidCoin}, bidCoin>>]
-                    IN
-                        \* Len(seq) > 0 is implied by \E i \in DOMAIN seq
-                        \E i \in DOMAIN seq:
-                            Close(
-                                acct,
-                                askCoin,
-                                bidCoin,
-                                limitOrStop,
-                                i
-                            )
+            \/  LET seq == IF limitOrStop = "limit"
+                           THEN limits[acct, <<{askCoin,bidCoin}, bidCoin>>]
+                           ELSE stops[acct, <<{askCoin,bidCoin}, bidCoin>>]
+                IN 
+                \E i \in DOMAIN seq:
+                    Close(acct, askCoin, bidCoin, limitOrStop, i)
     
-Spec == INIT /\ 
-        [][NEXT]_<<
-            accounts,
-            limits, 
-            reserve,
-            stops
-          >>
+Spec == INIT /\ [][NEXT]_vars
+
+\* For each coin, the amount in the system is constant
+CoinAmountInv == 
+    \A coinType \in CoinType:
+        LET Plus(acct, p) == p + accounts[acct, coinType]
+        IN FoldSet( Plus, reserve[coinType], ExchAccount ) = MaxAmount
+
+\* If exchrate is a fraction <<a,b>>, then b != 0
+NoDivBy0Inv == 
+    \A acct \in ExchAccount:
+    \A ppc \in PairPlusCoin:
+        LET SeqHasNoDivByZero(seq) == 
+           \A i \in DOMAIN seq: seq[i].exchrate[2] # 0
+        IN 
+        /\ SeqHasNoDivByZero( limits[acct, ppc] )
+        /\ SeqHasNoDivByZero( stops[acct, ppc] ) 
+
+\* each seq in limits is nondecreasing w.r.t. exchrate, i.e. 
+\* each exchange rate is greater or equal than the previous one in the sequence, and
+\* each seq in stops is nonincreasing w.r.t. exchrate
+PosOrderInv ==
+    \A acct \in ExchAccount:
+    \A ppc \in PairPlusCoin:
+        LET lim == limits[acct, ppc]
+            sto == stops[acct, ppc] 
+        IN
+        /\ \A i \in (DOMAIN lim) \ {1}:
+            LTE(lim[i-1].exchrate,lim[i].exchrate)
+        /\ \A i \in (DOMAIN sto) \ {1}:
+            GTE(sto[i-1].exchrate,sto[i].exchrate)
+
+\* limits/stops[acct, ppc] has its length bounded by MaxAmounts
+PosSeqLengthBoundInv ==
+    \A acct \in ExchAccount:
+    \A ppc \in PairPlusCoin:
+        LET BoundedLen(seq) == Len(seq) <= MaxAmount
+        IN 
+        /\ BoundedLen( limits[acct, ppc] )
+        /\ BoundedLen( stops[acct, ppc] )
+
+Inv ==
+    /\ TypeInvariant
+    /\ CoinAmountInv
+    /\ NoDivBy0Inv
+    /\ PosOrderInv
+    /\ PosSeqLengthBoundInv
+
+
 
 -----------------------------------------------------------------------------
 THEOREM Spec => []TypeInvariant
