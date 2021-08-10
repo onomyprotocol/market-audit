@@ -122,6 +122,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
             THEN
                 LET igt == IGT(seqOfPos, pos) IN
                 /\ limits' = [ limits EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
+                \* InsertAt: Inserts element e at the position i moving the original element to i+1
                         IF igt = {} THEN Append(@, pos) ELSE InsertAt(@, Cardinality(igt) + 1, pos)
                     ] 
                 /\ UNCHANGED stops
@@ -129,6 +130,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
             ELSE
                 LET ilt == ILT(seqOfPos, pos) IN
                 /\ stops' = [ stops EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
+                \* InsertAt: Inserts element e at the position i moving the original element to i+1
                         IF ilt = {} THEN Append(@, pos) ELSE InsertAt(@, Cardinality(ilt) + 1, pos)
                     ] 
                 /\  UNCHANGED limits

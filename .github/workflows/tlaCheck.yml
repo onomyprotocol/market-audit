@@ -10,23 +10,6 @@ on:
       - master
 
 jobs:
-  check-market:
-    name: Check Market.tla
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: setup java
-        uses: actions/setup-java@v2
-        with:
-          distribution: 'adopt'
-          java-version: '11'
-      - name: fetch TLC
-        run: |
-          wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
-      - name: Check Market (TLC)
-        run: |
-          java -jar tla2tools.jar MCMarket.tla -config MCMarket.cfg -simulate num=1000
-
   check-market3:
     name: Check Market3.tla
     runs-on: ubuntu-latest
