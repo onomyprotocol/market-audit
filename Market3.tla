@@ -27,14 +27,14 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 
 \* Sequence Helpers
 IGT(limitSeq, pos) ==   {i \in DOMAIN limitSeq: 
-                            GT(
-                                limitSeq[i].exchrate,
-                                pos.exchrate
+                            LTE(
+                                pos.exchrate,
+                                limitSeq[i].exchrate
                             )}
 ILT(stopSeq, pos) ==    {i \in DOMAIN stopSeq: 
-                            LT(
-                                stopSeq[i].exchrate,
-                                pos.exchrate
+                            GTE(
+                                pos.exchrate,
+                                stopSeq[i].exchrate
                             )}
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
