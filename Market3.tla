@@ -25,22 +25,6 @@ LT(a, b) == a[1]*b[2] < a[2]*b[1]
 
 LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 
-\* Sequence Helpers
-\* The number of members of the limits sequence for which the
-\* position is greater than or equal to
-IGTE(limitSeq, pos) ==   Cardinality({i \in DOMAIN limitSeq: 
-                            GTE(
-                                pos.exchrate,
-                                limitSeq[i].exchrate
-                            )})
-\* The number of members of the stops sequence for which the
-\* position is less than or equal to
-ILTE(stopSeq, pos) ==    Cardinality({i \in DOMAIN stopSeq: 
-                            LTE(
-                                pos.exchrate,
-                                stopSeq[i].exchrate
-                            )})
-
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
 \* all of the position amounts. Returns 0 if seq is empty.
 SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
@@ -124,18 +108,32 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
         /\ SumSeqPos(seqOfPos) + pos.amount <= balance
         /\  IF limitOrStop = "limit"
             THEN
-                LET igte == IGTE(seqOfPos, pos) IN
-                /\ limits' = [ limits EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
-                \* InsertAt: Inserts element e at the position i moving the original element to i+1
-                        IF igte = 0 THEN Append(@, pos) ELSE InsertAt(@, igte + 1, pos)
-                    ] 
+                \* igte is the index of pos in the extended sequence such that:
+                \* 1. pos has a greater or equal to exchange rate than all elements to the left of it (if any)
+                \* 2. pos has a lesser exchange rate than all elements to the right of it (if any) 
+                /\ \E igte \in DOMAIN seqOfPos \union { Len(seqOfPos) + 1 }:
+                  /\ \A i \in DOMAIN seqOfPos:
+                    IF i < igte
+                    THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
+                    ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
+                  /\ limits' = [ limits EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
+                        \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
+                        InsertAt(@, igte, pos)
+                     ] 
                 /\ UNCHANGED stops
             \* ELSE type is stops
             ELSE
-                LET ilte == ILTE(seqOfPos, pos) IN
-                /\ stops' = [ stops EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
-                \* InsertAt: Inserts element e at the position i moving the original element to i+1
-                        IF ilte = 0 THEN Append(@, pos) ELSE InsertAt(@, ilte + 1, pos)
+                \* ilte is the index of pos in the extended sequence such that:
+                \* 1. pos has a less or equal to exchange rate than all elements to the left of it (if any)
+                \* 2. pos has a greater exchange rate than all elements to the right of it (if any) 
+                /\ \E ilte \in DOMAIN seqOfPos \union { Len(seqOfPos) + 1 }:
+                  /\ \A i \in DOMAIN seqOfPos:
+                    IF i < ilte
+                    THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
+                    ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
+                  /\ stops' = [ stops EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
+                        \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
+                        InsertAt(@, ilte, pos)
                     ] 
                 /\  UNCHANGED limits
     /\ UNCHANGED << accounts, reserve >>
