@@ -26,16 +26,20 @@ LT(a, b) == a[1]*b[2] < a[2]*b[1]
 LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 
 \* Sequence Helpers
-IGT(limitSeq, pos) ==   {i \in DOMAIN limitSeq: 
-                            LTE(
-                                pos.exchrate,
-                                limitSeq[i].exchrate
-                            )}
-ILT(stopSeq, pos) ==    {i \in DOMAIN stopSeq: 
+\* The number of members of the limits sequence for which the
+\* position is greater than or equal to
+IGTE(limitSeq, pos) ==   Cardinality({i \in DOMAIN limitSeq: 
                             GTE(
                                 pos.exchrate,
+                                limitSeq[i].exchrate
+                            )})
+\* The number of members of the stops sequence for which the
+\* position is less than or equal to
+ILTE(stopSeq, pos) ==    Cardinality({i \in DOMAIN stopSeq: 
+                            LTE(
+                                pos.exchrate,
                                 stopSeq[i].exchrate
-                            )}
+                            )})
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
 \* all of the position amounts. Returns 0 if seq is empty.
@@ -108,30 +112,30 @@ Withdraw(acct, amount, coinType) ==
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
     LET acctLimits == limits[acct,<<{askCoin,bidCoin}, bidCoin>>]
         acctStops == stops[acct,<<{askCoin,bidCoin}, bidCoin>>]
-        amount == accounts[acct, bidCoin] IN 
+        balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
     \* total amounts in all positions for any particular pair with the Bid 
     \* Coin. 
-    /\ amount >= pos.amount + SumSeqPos(acctLimits) + SumSeqPos(acctStops)
+    /\ balance >= pos.amount + SumSeqPos(acctLimits) + SumSeqPos(acctStops)
     /\  LET seqOfPos == IF limitOrStop = "limit" THEN acctLimits ELSE acctStops IN
         \* precondition:  redundant. Line 109 asserts that a >= b + c + d, which implies
         \* that a >= b + c and a >= b + d, for nonnegative b,c,d
         \* consider removing either this or the previous precondition.
-        /\ SumSeqPos(seqOfPos) + pos.amount <= amount
+        /\ SumSeqPos(seqOfPos) + pos.amount <= balance
         /\  IF limitOrStop = "limit"
             THEN
-                LET igt == IGT(seqOfPos, pos) IN
+                LET igte == IGTE(seqOfPos, pos) IN
                 /\ limits' = [ limits EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
                 \* InsertAt: Inserts element e at the position i moving the original element to i+1
-                        IF igt = {} THEN Append(@, pos) ELSE InsertAt(@, Cardinality(igt) + 1, pos)
+                        IF igte = 0 THEN Append(@, pos) ELSE InsertAt(@, igte + 1, pos)
                     ] 
                 /\ UNCHANGED stops
             \* ELSE type is stops
             ELSE
-                LET ilt == ILT(seqOfPos, pos) IN
+                LET ilte == ILTE(seqOfPos, pos) IN
                 /\ stops' = [ stops EXCEPT ![acct, <<{askCoin, bidCoin}, bidCoin>>] =
                 \* InsertAt: Inserts element e at the position i moving the original element to i+1
-                        IF ilt = {} THEN Append(@, pos) ELSE InsertAt(@, Cardinality(ilt) + 1, pos)
+                        IF ilte = 0 THEN Append(@, pos) ELSE InsertAt(@, ilte + 1, pos)
                     ] 
                 /\  UNCHANGED limits
     /\ UNCHANGED << accounts, reserve >>
@@ -140,7 +144,6 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
     LET seqOfPos == IF limitOrStop = "limit" 
                     THEN limits[acct,<<{askCoin,bidCoin}, bidCoin>>] 
                     ELSE stops[acct,<<{askCoin,bidCoin}, bidCoin>>] 
-        amount == accounts[acct, bidCoin] 
     IN 
     /\  LET pos == seqOfPos[i] IN 
         IF limitOrStop = "limit"
