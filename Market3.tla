@@ -67,7 +67,7 @@ TypeInvariant ==
 /\  reserve \in [CoinType -> Amounts]
 
 INIT ==     
-\* initially, all ballances are 0 as all the coins are held by the reserve
+\* initially, all balances are 0 as all the coins are held by the reserve
 /\  accounts = [eaAndCt \in ExchAccount \X CoinType |-> 0]
 \* initially, there are no open positions    
 /\  limits = [accTAndPpc \in ExchAccount \X PairPlusCoin |-> <<>>]
@@ -220,12 +220,28 @@ PosSeqLengthBoundInv ==
         /\ BoundedLen( limits[acct, ppc] )
         /\ BoundedLen( stops[acct, ppc] )
 
+\* It should not be possible to have open positions, which the account balance cannot cover
+CoverAllOpenPosInv == 
+    \A acct \in ExchAccount:
+    \A bidCoin \in CoinType:
+        \* An open position constitutes a promise to spend, if/when that position
+        \* is closed. However, because there are >2 coins in the system, and separate
+        \* accounting for limits/stops, we need to make sure that the open positions, 
+        \* for a given bid coin, across all possible ask coins, across both limits and stops, 
+        \* sum up to at most the account balance (for the chosen bid coin)
+        LET SumSeqs(askCoin, partialSum) == 
+        partialSum + 
+        SumSeqPos( limits[acct, <<{askCoin, bidCoin}, bidCoin>>] ) +
+        SumSeqPos( stops[acct, <<{askCoin, bidCoin}, bidCoin>>] )
+        IN FoldSet( SumSeqs, 0, CoinType \ {bidCoin } ) <= accounts[acct, bidCoin] 
+
 Inv ==
     /\ TypeInvariant
     /\ CoinAmountInv
     /\ NoDivBy0Inv
     /\ PosOrderInv
     /\ PosSeqLengthBoundInv
+    /\ CoverAllOpenPosInv
 
 
 
