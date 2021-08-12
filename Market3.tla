@@ -49,6 +49,7 @@ ExchRateType == {<<a, b>> : a \in Amounts, b \in Amounts}
 
 PositionType == 
 [
+    acct: ExchAccount,
     \* Exchange Rate is defined as
     \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
     exchrate: ExchRateType,
@@ -88,29 +89,17 @@ Deposit(acct, amount, coinType) ==
     /\  UNCHANGED << limits, stops >>
 
 Withdraw(acct, amount, coinType) ==
-    /\  amount <= accounts[acct, coinType]
-    /\ accounts' = [accounts EXCEPT \A askCoin \in coinType :
-        LET limitBook == limits[acct,<<{askCoin,coinType}, coinType>>]
-            stopBook == stops[acct,<<{askCoin,coinType}, coinType>>]
-        IN
-            \* ilte is the index of pos in the extended sequence such that:
-                \* 1. first element of the sequence for which the head sub seq sum is greater than the balance 
-                /\ \E ilte \in DOMAIN limitBook \union { Len(limitBook) + 1 }:
-                    /\ \A i \in DOMAIN limitBook:
-                        IF i < ilte
-                        THEN SumSeqPos(SubSeq(limitBook, 1, i)) <= balance
-                        ELSE SumSeqPos(SubSeq(limitBook, 1, i)) > balance
-                    /\  
-                    LET limitUpdate == 
-                        IF SumSeqPos(SubSeq(limitBook, 1, ilte - 1)) = balance
-                        THEN SubSeq(limitBook, 1, ilte - 1)
-                        ELSE Append(SubSeq(limitBook, 1, ilte - 1),
-                            [
-                                
-                            ]
-                        SubSeq(limitBook, 1, ilte - 1)
-                SelectSeq(s, balance <= SumSeqPos(limitBook))
-        IN
+    LET balance == accounts[acct, coinType]
+    IN  \* Limits
+        /\  LET F[PairPlusCoins \in SUBSET PairPlusCoin] ==
+                IF PairPlusCoins = {} THEN limits
+                ELSE 
+                    LET PPC == CHOOSE PPC \in PairPlusCoins : TRUE
+                    IN  [F[PairPlusCoins \ {PPC}] EXCEPT ![acct, PPC] =
+                        IF  SelectSeq(@, @.
+                     
+    /\ accounts' = [accounts EXCEPT 
+        
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << limits, stops >>
     
