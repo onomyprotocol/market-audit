@@ -74,6 +74,7 @@ ExchRateType == {<<a, b>> : a \in Amounts, b \in Amounts}
 
 PositionType == 
 [
+    acct: ExchAccount,
     \* Exchange Rate is defined as
     \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
     exchrate: ExchRateType,
