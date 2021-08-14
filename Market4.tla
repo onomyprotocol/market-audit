@@ -1,12 +1,16 @@
-------------------------------- MODULE Market3 -------------------------------
+------------------------------- MODULE Market4 -------------------------------
 EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
 
 VARIABLE    accounts,
+            \* Drops are proportional entitlements to the AMM liquidity pools
+            drops,
             \* Limit Books
             limits,
+            \* Pools hold the AMM liquidity
+            pools,
             \* The reserve holds the initial amounts
             reserve,
             \* Stop Books
@@ -54,7 +58,6 @@ TruncatePositions( limitsSeq, stopsSeq, balance ) ==
         SubSeq(stopsSeq, 1, cutoffs[2])
         >>
 
-
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
 
@@ -79,7 +82,7 @@ PositionType ==
 
 TypeInvariant ==  
 \* accounts[ <<acct, coin>> ] is the balance of `coin` in account `acct`
-/\  accounts \in [ExchAccount \X CoinType -> Amounts]
+/\ accounts \in [ExchAccount \X CoinType -> Amounts]
 \* limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
 /\  limits \in [ ExchAccount \X PairType -> Seq(PositionType)]
 \* stops[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
@@ -156,6 +159,7 @@ Withdraw(acct, amount, coinType) ==
             ]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     
+    
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
     LET acctLimits == limits[acct,<<askCoin, bidCoin>>]
         acctStops == stops[acct,<<askCoin, bidCoin>>]
@@ -175,30 +179,38 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                 \* 1. pos has a greater or equal to exchange rate than all elements to the left of it (if any)
                 \* 2. pos has a lesser exchange rate than all elements to the right of it (if any) 
                 /\ \E igte \in DOMAIN seqOfPos \union { Len(seqOfPos) + 1 }:
-                  /\ \A i \in DOMAIN seqOfPos:
-                    IF i < igte
-                    THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
-                    ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ limits' = [ limits EXCEPT ![acct, <<askCoin, bidCoin>>] =
-                        \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
-                        InsertAt(@, igte, pos)
-                     ] 
-                /\ UNCHANGED stops
+                    /\ \A i \in DOMAIN seqOfPos:
+                        IF i < igte
+                        THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
+                        ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
+                    /\  LET limitsUpd == [ limits EXCEPT ![acct, <<askCoin, bidCoin>>] =
+                                \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
+                                InsertAt(@, igte, pos)
+                            ]
+                            stopsUpd == stops
+                        IN  LET booksUpd == Execute(limitUpd, stops)
+                            IN  /\  limits' = booksUpd.limits
+                                /\  stops'  = booksUpd.stops
+                /\ UNCHANGED << stops >>
             \* ELSE type is stops
             ELSE
                 \* ilte is the index of pos in the extended sequence such that:
                 \* 1. pos has a less or equal to exchange rate than all elements to the left of it (if any)
                 \* 2. pos has a greater exchange rate than all elements to the right of it (if any) 
                 /\ \E ilte \in DOMAIN seqOfPos \union { Len(seqOfPos) + 1 }:
-                  /\ \A i \in DOMAIN seqOfPos:
-                    IF i < ilte
-                    THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
-                    ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ stops' = [ stops EXCEPT ![acct, <<askCoin, bidCoin>>] =
-                        \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
-                        InsertAt(@, ilte, pos)
-                    ] 
-                /\  UNCHANGED limits
+                    /\ \A i \in DOMAIN seqOfPos:
+                        IF i < ilte
+                        THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
+                        ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
+                    /\  LET stopsUpd == [ stops EXCEPT ![acct, <<askCoin, bidCoin>>] =
+                                \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
+                                InsertAt(@, ilte, pos)
+                            ]
+                            limitsUpd == limits
+                        IN  LET booksUpd == Execute(limitsUpd, stopsUpd)
+                            IN  /\  limits' = booksUpd.limits
+                                /\  stops' = booksUpd.stops
+                /\  UNCHANGED << limits >>
     /\ UNCHANGED << accounts, reserve >>
 
 Close(acct, askCoin, bidCoin, limitOrStop, i) ==
@@ -211,10 +223,10 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
         THEN
             \* Remove removes all copies, what if there are multiple equivalent positions?
             /\ limits' = [limits EXCEPT ![acct, <<askCoin, bidCoin>>] = Remove(@, pos)]
-            /\ UNCHANGED stops
+            /\ UNCHANGED << stops >>
         ELSE
             /\ stops' = [stops EXCEPT ![acct, <<askCoin, bidCoin>>] = Remove(@, pos)]
-            /\ UNCHANGED limits
+            /\ UNCHANGED << limits >>
     /\ UNCHANGED << accounts, reserve >>
 
 NEXT == 
@@ -228,12 +240,12 @@ NEXT ==
             \E  bidCoin \in CoinType \ {askCoin} :
             \/  \E  exchrate \in Amounts \X PositiveAmounts: \* what is exchrate 0 / x ?
                 \E  bidAmount \in PositiveAmounts :
-                    Open(acct, askCoin, bidCoin, limitOrStop, [
-                        \* Exchange Rate is defined as
-                        \* exchrate[1] / exchrate[2]
-                        exchrate |-> exchrate,
-                        amount |-> bidAmount
-                      ])
+                    /\  Open(acct, askCoin, bidCoin, limitOrStop, [
+                            \* Exchange Rate is defined as
+                            \* exchrate[1] / exchrate[2]
+                            exchrate |-> exchrate,
+                            amount |-> bidAmount
+                        ])
                 \*  Close
             \/  LET seq == IF limitOrStop = "limit"
                            THEN limits[acct, <<askCoin, bidCoin>>]
