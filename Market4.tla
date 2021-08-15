@@ -68,6 +68,9 @@ PositiveAmounts == 1..MaxAmount
 PairTypePre == {<<a, b>> : a \in CoinType, b \in CoinType}
 PairType == { ptp \in PairTypePre : ptp[1] # ptp[2] }
 
+PairSetTypePre == {<<a, b>> : a \in CoinType, b \in CoinType}
+PairSetType == { pst \in PairSetTypePre : Cardinality(pst) > 1 }
+
 ExchRateType == {<<a, b>> : a \in Amounts, b \in Amounts}
 
 PositionType == 
@@ -81,13 +84,17 @@ PositionType ==
 ]
 
 TypeInvariant ==  
-\* accounts[ <<acct, coin>> ] is the balance of `coin` in account `acct`
-/\ accounts \in [ExchAccount \X CoinType -> Amounts]
-\* limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+\*  accounts[ <<acct, coin>> ] is the balance of `coin` in account `acct`
+/\  accounts \in [ExchAccount \X CoinType -> Amounts]
+\*  drops[ acct \X {coin, coin} ] is a balance of liquidity drop token
+/\  drops \in [ExchAccount \X PairSetType -> Amounts] 
+\*  limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
 /\  limits \in [ ExchAccount \X PairType -> Seq(PositionType)]
-\* stops[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+\*  pools[ pair ] is a balance of liquidity within a pool tied to a pair <<a, b>> where balance is b coin
+/\  pools \in [ PairType -> Amounts ]
+\*  stops[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
 /\  stops \in [ ExchAccount \X PairType -> Seq(PositionType)]
-\* reserve[ coin ] is the amount of coins of type `coin` currently held in reserve
+\*  reserve[ coin ] is the amount of coins of type `coin` currently held in reserve
 /\  reserve \in [CoinType -> Amounts]
 
 INIT ==     
@@ -102,7 +109,7 @@ INIT ==
 (***************************************************************************)
 (* Deposit(acct, amount, type)                                             *)
 (*                                                                         *)
-(* The Deposit function takes a SUBSET of coins from a single type and     *)
+(* The Deposit function takes an amount of coins from a single type and    *)
 (* the reserve and places it into an exchange account.                     *)
 (***************************************************************************)
 Deposit(acct, amount, coinType) ==
@@ -228,6 +235,65 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
             /\ stops' = [stops EXCEPT ![acct, <<askCoin, bidCoin>>] = Remove(@, pos)]
             /\ UNCHANGED << limits >>
     /\ UNCHANGED << accounts, reserve >>
+
+Provision(acct, pair, amt) ==
+LET \* This is a hack below need to find out how to do this without making a set of 1 element
+    strong == CHOOSE strong \in pair : 
+        pools[<<strong, pair \ {strong}>>] >= pools[<<pair \ {strong}, strong>>]
+    weak == CHOOSE weak \in pair \ {strong} : TRUE
+    poolExchrate == << pools[<<weak, strong>>], pools[<<strong, weak>>] >>
+    balStrong == accounts[<<acct, strong>>].balance
+    balWeak == accounts[<<acct, weak>>].balance
+    bidStrong == amt
+    bidWeak == 
+    IF  pools[<<pair, strong>>] > 0
+    THEN
+        (bidStrong * pools[<<pair, weak>>]) \div pools[<<pair, strong>>]
+    ELSE
+        IF amt <= balWeak
+            THEN    balWeak
+            ELSE    amt      
+IN  \* Enabling Condition: balance of strong coin greater than amt 
+    /\  balStrong >= amt
+    /\  pools' = [ pools EXCEPT
+            ![<<pair>>] = @ + bidStrong,
+            ![<<pair[2], pair[1]>>] = @ + bidWeak
+        ]
+    /\  drops' = [ drops EXCEPT 
+            ![<<acct, pair>>] = @ + bidStrong 
+        ]
+    /\  accounts' = [ accounts EXCEPT
+            ![<<acct, weak>>].balance = @ - bidWeak,
+            ![<<acct, strong>>].balance = @ - bidStrong
+        ]
+    /\ UNCHANGED << limits, stops >>
+
+Liquidate(acct, pair, amt) ==
+\* Qualifying condition
+/\  LET 
+        strong == CHOOSE strong \in pair : 
+            pools[<<strong, pair \ {strong}>>] >= pools[<<pair \ {strong}, strong>>]
+        weak == CHOOSE weak \in pair \ {strong} : TRUE
+        amtStrong == amt
+        amtWeak == 
+        IF pools[<<pair, strong>>] > 0
+        THEN (amt * pools[<<pair, weak>>]) \div pools[<<pair, strong>>]
+        ELSE amt
+    IN
+        \* Enabling Condition: 
+        /\  amtStrong <= drops[<<acct, pair>>]
+        /\  accounts' = [ accounts EXCEPT
+                ![<<acct, weak>>].balance = @ + amtWeak,
+                ![<<acct, strong>>].balance = @ + amtStrong
+            ]
+        /\  pools' = [ pools EXCEPT 
+                ![<<pair, strong>>] = @ - @ * (amt \div pools[<<weak, strong>>]),
+                ![<<pair, weak>>] = @ - amt
+            ]
+        
+        /\ drops' = [ drops EXCEPT 
+            ![<<acct, pair>>] = @ - amt ]
+        /\ UNCHANGED << limits, stops >>
 
 NEXT == 
     \E acct \in ExchAccount :
