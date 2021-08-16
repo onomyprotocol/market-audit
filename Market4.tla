@@ -90,11 +90,11 @@ TypeInvariant ==
 \*  drops[ acct \X {coin, coin} ] is a balance of liquidity drop token
 /\  drops \in [ExchAccount \X PairSetType -> Amounts] 
 \*  limits[ pair ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
-/\  limits \in [ PairType -> Seq(PositionType)]
+/\  limits \in [PairType -> Seq(PositionType)]
 \*  pools[ pair ] is a balance of liquidity within a pool tied to a pair <<a, b>> where balance is b coin
-/\  pools \in [ PairType -> Amounts ]
+/\  pools \in [PairType -> Amounts ]
 \*  stops[ pair ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
-/\  stops \in [ PairType -> Seq(PositionType)]
+/\  stops \in [PairType -> Seq(PositionType)]
 \*  reserve[ coin ] is the amount of coins of type `coin` currently held in reserve
 /\  reserve \in [CoinType -> Amounts]
 
@@ -130,7 +130,7 @@ LET F[i \in 0..Len(book)] ==
 
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
-ConditionalWithdraw(acct, amount, coinType) ==
+Withdraw(acct, amount, coinType) ==
     LET newBalance == accounts[acct,coinType] - amount
     IN
     /\  amount <= accounts[acct, coinType]
@@ -145,36 +145,6 @@ ConditionalWithdraw(acct, amount, coinType) ==
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ - amount]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << limits, stops >>
-
-\* Automatically updates positions if the balance goes below the amounts required by open positions
-Withdraw(acct, amount, coinType) ==
-    /\  amount <= accounts[acct, coinType]
-    /\  LET newBalance == accounts[acct, coinType] - amount 
-        IN 
-        /\ accounts' = [accounts EXCEPT ![acct, coinType] = newBalance]
-        \* We need to prune limits and stops, such that we keep the 
-        \* longest possible prefix, for which the sum of positions is covered by newBalance
-        /\ limits' = [ acctAndPPC \in ExchAccount \X PairType |->
-            LET acctArg == acctAndPPC[1]
-                pair == acctAndPPC[2]
-            IN  IF acctArg # acct \/ pair[2] # coinType
-                THEN limits[acctArg, pair]
-                ELSE 
-                    LET newPosSeqPair == 
-                        TruncatePositions( limits[acct, pair], stops[acct, pair], newBalance )
-                    IN newPosSeqPair[1]
-            ]
-        /\ stops' = [ acctAndPPC \in ExchAccount \X PairType |->
-            LET acctArg == acctAndPPC[1]
-                pair == acctAndPPC[2]
-            IN  IF acctArg # acct \/ pair[2] # coinType
-                THEN stops[acctArg, pair]
-                ELSE 
-                    LET newPosSeqPair == 
-                        TruncatePositions( limits[acct, pair], stops[acct, pair], newBalance )
-                    IN newPosSeqPair[2]
-            ]
-    /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
 
 (***************************************************************************)
 (* Max amount that pool may sell of ask coin without                       *)
@@ -199,6 +169,11 @@ erateInitial[2] *
 ) - erateInitial[1]
 
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
+LET askStops == stopsUpd[<<bidCoin, AskCoin>>]
+    bidLimits == limitsUpd[<<askCoin, bidCoin>>]
+    poolExchrate == pools[<<pair[1], pair[2]>>] /
+                    pools[<<pair[2], pair[1]>>]
+IN
 (***************************************************************************)
 (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
 (*         than or equal Ask Stop Book Inverse Exchange Rate               *)
@@ -212,6 +187,15 @@ CASE    GTE(poolExchRate, askStopInverseExchrate) ->
     (*   Action: Execute no loss trade                                     *)
     (***********************************************************************)
     CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
+            \*  Bid Limits are the limiting amount
+            CASE    Head(askStops).amount >= Head(bidLimits).amount ->
+                    LET strikeExchRate == bidLimitExchRate
+                        maxPoolAsk ==   Head(bidLimits).amount
+                        maxPoolBid ==   maxPoolAsk * 
+                                        strikeExchRate[1] / 
+                                        strikExchRate[2]
+                    IN
+                
     (***********************************************************************)
     (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
     (*           is less than the exchange rate of the head of the Bid     *)

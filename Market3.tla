@@ -81,9 +81,9 @@ TypeInvariant ==
 \* accounts[ <<acct, coin>> ] is the balance of `coin` in account `acct`
 /\  accounts \in [ExchAccount \X CoinType -> Amounts]
 \* limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
-/\  limits \in [ ExchAccount \X PairType -> Seq(PositionType)]
+/\  limits \in [PairType -> Seq(PositionType)]
 \* stops[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
-/\  stops \in [ ExchAccount \X PairType -> Seq(PositionType)]
+/\  stops \in [PairType -> Seq(PositionType)]
 \* reserve[ coin ] is the amount of coins of type `coin` currently held in reserve
 /\  reserve \in [CoinType -> Amounts]
 
@@ -91,16 +91,16 @@ INIT ==
 \* initially, all ballances are 0 as all the coins are held by the reserve
 /\  accounts = [eaAndCt \in ExchAccount \X CoinType |-> 0]
 \* initially, there are no open positions    
-/\  limits = [accTAndPpc \in ExchAccount \X PairType |-> <<>>]
-/\  stops = [accTAndPpc \in ExchAccount \X PairType |-> <<>>] 
+/\  limits = [pair \in PairType |-> <<>>]
+/\  stops = [pair \in PairType |-> <<>>] 
 \* initially, all the coins are in the reserve
 /\  reserve = [type \in CoinType |-> MaxAmount]
 
 (***************************************************************************)
 (* Deposit(acct, amount, type)                                             *)
 (*                                                                         *)
-(* The Deposit function takes a SUBSET of coins from a single type and     *)
-(* the reserve and places it into an exchange account.                     *)
+(* The Deposit function takes a number of coins from the reserve and places*)
+(* it into an exchange account.                                            *)
 (***************************************************************************)
 Deposit(acct, amount, coinType) ==
     /\  amount <= reserve[coinType]
@@ -108,9 +108,17 @@ Deposit(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << limits, stops >>
 
+SelectAcctSeq(acct, book) == 
+LET F[i \in 0..Len(book)] ==
+    IF i = 0 THEN << >>
+    ELSE 
+        IF book[i].account = acct THEN Append(F[i-1], book[i])
+        ELSE F[i-1]
+IN  F[Len(book)]
+
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
-ConditionalWithdraw(acct, amount, coinType) ==
+Withdraw(acct, amount, coinType) ==
     LET newBalance == accounts[acct,coinType] - amount
     IN
     /\  amount <= accounts[acct, coinType]
@@ -118,57 +126,25 @@ ConditionalWithdraw(acct, amount, coinType) ==
     \* It is up to the user to select and close positions before withdrawal
     /\  \A askCoin \in CoinType \ {coinType}:
         PositionInv( 
-            limits[acct, <<{askCoin, coinType}, coinType>>],
-            stops[acct, <<{askCoin, coinType}, coinType>>],
+            SelectAcctSeq(acct, limits[<<askCoin, coinType>>]),
+            SelectAcctSeq(acct, stops[<<askCoin, coinType>>]),
             newBalance
             )
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ - amount]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << limits, stops >>
-
-\* Automatically updates positions if the balance goes below the amounts required by open positions
-Withdraw(acct, amount, coinType) ==
-    /\  amount <= accounts[acct, coinType]
-    /\  LET newBalance == accounts[acct, coinType] - amount 
-        IN 
-        /\ accounts' = [accounts EXCEPT ![acct, coinType] = newBalance]
-        \* We need to prune limits and stops, such that we keep the 
-        \* longest possible prefix, for which the sum of positions is covered by newBalance
-        /\ limits' = [ acctAndPPC \in ExchAccount \X PairType |->
-            LET acctArg == acctAndPPC[1]
-                pair == acctAndPPC[2]
-            IN  IF acctArg # acct \/ pair[2] # coinType
-                THEN limits[acctArg, pair]
-                ELSE 
-                    LET newPosSeqPair == 
-                        TruncatePositions( limits[acct, pair], stops[acct, pair], newBalance )
-                    IN newPosSeqPair[1]
-            ]
-        /\ stops' = [ acctAndPPC \in ExchAccount \X PairType |->
-            LET acctArg == acctAndPPC[1]
-                pair == acctAndPPC[2]
-            IN  IF acctArg # acct \/ pair[2] # coinType
-                THEN stops[acctArg, pair]
-                ELSE 
-                    LET newPosSeqPair == 
-                        TruncatePositions( limits[acct, pair], stops[acct, pair], newBalance )
-                    IN newPosSeqPair[2]
-            ]
-    /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
-    LET acctLimits == limits[acct,<<askCoin, bidCoin>>]
-        acctStops == stops[acct,<<askCoin, bidCoin>>]
+    LET limitBook == limits[<<askCoin, bidCoin>>]
+        stopBook == stops[<<askCoin, bidCoin>>]
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
     \* total amounts in all positions for any particular pair with the Bid 
     \* Coin. 
-    /\ balance >= pos.amount + SumSeqPos(acctLimits) + SumSeqPos(acctStops)
-    /\  LET seqOfPos == IF limitOrStop = "limit" THEN acctLimits ELSE acctStops IN
-        \* precondition:  redundant. The condition above asserts that a >= b + c + d, which implies
-        \* that a >= b + c and a >= b + d, for nonnegative b,c,d
-        \* consider removing either this or the previous precondition.
-        /\ SumSeqPos(seqOfPos) + pos.amount <= balance
+    /\ balance >=   pos.amount + 
+                    SumSeqPos(SelectAcctSeq(acct, limitBook)) + 
+                    SumSeqPos(SelectAcctSeq(acct, stopBook))
+    /\  LET seqOfPos == IF limitOrStop = "limit" THEN limitBook ELSE stopBook IN
         /\  IF limitOrStop = "limit"
             THEN
                 \* igte is the index of pos in the extended sequence such that:
@@ -179,7 +155,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < igte
                     THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ limits' = [ limits EXCEPT ![acct, <<askCoin, bidCoin>>] =
+                  /\ limits' = [ limits EXCEPT ![<<askCoin, bidCoin>>] =
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
                      ] 
@@ -194,7 +170,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ stops' = [ stops EXCEPT ![acct, <<askCoin, bidCoin>>] =
+                  /\ stops' = [ stops EXCEPT ![<<askCoin, bidCoin>>] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
                     ] 
@@ -203,17 +179,17 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
 
 Close(acct, askCoin, bidCoin, limitOrStop, i) ==
     LET seqOfPos == IF limitOrStop = "limit" 
-                    THEN limits[acct,<<askCoin, bidCoin>>] 
-                    ELSE stops[acct,<<askCoin, bidCoin>>] 
+                    THEN limits[<<askCoin, bidCoin>>] 
+                    ELSE stops[<<askCoin, bidCoin>>] 
     IN 
     /\  LET pos == seqOfPos[i] IN 
         IF limitOrStop = "limit"
         THEN
             \* Remove removes all copies, what if there are multiple equivalent positions?
-            /\ limits' = [limits EXCEPT ![acct, <<askCoin, bidCoin>>] = Remove(@, pos)]
+            /\ limits' = [limits EXCEPT ![<<askCoin, bidCoin>>] = Remove(@, pos)]
             /\ UNCHANGED stops
         ELSE
-            /\ stops' = [stops EXCEPT ![acct, <<askCoin, bidCoin>>] = Remove(@, pos)]
+            /\ stops' = [stops EXCEPT ![<<askCoin, bidCoin>>] = Remove(@, pos)]
             /\ UNCHANGED limits
     /\ UNCHANGED << accounts, reserve >>
 
@@ -229,6 +205,7 @@ NEXT ==
             \/  \E  exchrate \in Amounts \X PositiveAmounts: \* what is exchrate 0 / x ?
                 \E  bidAmount \in PositiveAmounts :
                     Open(acct, askCoin, bidCoin, limitOrStop, [
+                        account |-> acct,
                         \* Exchange Rate is defined as
                         \* exchrate[1] / exchrate[2]
                         exchrate |-> exchrate,
@@ -236,8 +213,8 @@ NEXT ==
                       ])
                 \*  Close
             \/  LET seq == IF limitOrStop = "limit"
-                           THEN limits[acct, <<askCoin, bidCoin>>]
-                           ELSE stops[acct, <<askCoin, bidCoin>>]
+                           THEN limits[<<askCoin, bidCoin>>]
+                           ELSE stops[<<askCoin, bidCoin>>]
                 IN 
                 \E i \in DOMAIN seq:
                     Close(acct, askCoin, bidCoin, limitOrStop, i)
@@ -251,23 +228,21 @@ CoinAmountInv ==
         IN FoldSet( Plus, reserve[coinType], ExchAccount ) = MaxAmount
 
 \* If exchrate is a fraction <<a,b>>, then b != 0
-NoDivBy0Inv == 
-    \A acct \in ExchAccount:
+NoDivBy0Inv ==
     \A pair \in PairType:
         LET SeqHasNoDivByZero(seq) == 
            \A i \in DOMAIN seq: seq[i].exchrate[2] # 0
         IN 
-        /\ SeqHasNoDivByZero( limits[acct, pair] )
-        /\ SeqHasNoDivByZero( stops[acct, pair] ) 
+        /\ SeqHasNoDivByZero( limits[pair] )
+        /\ SeqHasNoDivByZero( stops[pair] ) 
 
 \* each seq in limits is nondecreasing w.r.t. exchrate, i.e. 
 \* each exchange rate is greater or equal than the previous one in the sequence, and
 \* each seq in stops is nonincreasing w.r.t. exchrate
 PosOrderInv ==
-    \A acct \in ExchAccount:
     \A pair \in PairType:
-        LET lim == limits[acct, pair]
-            sto == stops[acct, pair] 
+        LET lim == limits[pair]
+            sto == stops[pair] 
         IN
         /\ \A i \in (DOMAIN lim) \ {1}:
             LTE(lim[i-1].exchrate,lim[i].exchrate)
@@ -276,19 +251,22 @@ PosOrderInv ==
 
 \* limits/stops[acct, pair] has its length bounded by MaxAmounts
 PosSeqLengthBoundInv ==
-    \A acct \in ExchAccount:
     \A pair \in PairType:
         LET BoundedLen(seq) == Len(seq) <= MaxAmount
         IN 
-        /\ BoundedLen( limits[acct, pair] )
-        /\ BoundedLen( stops[acct, pair] )
+        /\ BoundedLen( limits[pair] )
+        /\ BoundedLen( stops[pair] )
         
 \* One of the critical system invariants: For every account `acct` and pair of coins `pair`,
 \* the account balance for the bidCoin covers all open positions for `F[acct, pair]`  
 PositionsAreProvisionedInv == 
     \A acct \in ExchAccount:
     \A pair \in PairType:
-        PositionInv( limits[acct, pair], stops[acct, pair], accounts[acct, pair[2]] )
+        PositionInv( 
+            SelectAcctSeq(acct, limits[pair]), 
+            SelectAcctSeq(acct, stops[pair]), 
+            accounts[acct, pair[2]] 
+        )
 
 Inv ==
     /\ TypeInvariant
