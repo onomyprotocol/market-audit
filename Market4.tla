@@ -166,12 +166,34 @@ Withdraw(acct, amount, coinType) ==
             ]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
 
+(***************************************************************************)
+(* Max amount that pool may sell of ask coin without                       *)
+(* executing the most adjacent order                                       *)
+(*                                                                         *)
+(* Differential Invariant:                                                 *)
+(* d(poolAsk) / d(poolBid) = d(erate)                                      *)
+(* d(poolAsk) = d(poolBid) * d(erate)                                      *)
+(*                                                                         *)
+(* Integrate over poolAsk on lhs and poolBid & erate on rhs then           *)
+(* substitute and simplify                                                 *)
+(***************************************************************************)
+MaxPoolBid(erateFinal, erateInitial) ==
+erateInitial[2] * 
+(
+    (erateFinal[1] \ erateFinal[2]) *
+    (
+        2 - 
+        (erateFinal[1] * erateInitial[2]) \
+        (erateFinal[2] * erateInitial[1])
+    )
+) - erateInitial[1]
+
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 (***************************************************************************)
 (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
 (*         than or equal Ask Stop Book Inverse Exchange Rate               *)
 (***************************************************************************)
-CASE    GTE(askStopInverseExchrate, poolExchRate) ->
+CASE    GTE(poolExchRate, askStopInverseExchrate) ->
     (***********************************************************************)
     (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
     (*           is equal to exchange rate of the head of the Bid Limit    *)
@@ -188,6 +210,7 @@ CASE    GTE(askStopInverseExchrate, poolExchRate) ->
     (*   Action: Execute Ask Stop Order                                    *)
     (***********************************************************************)
     []      LT(askStopInverseExchRate, bidLimitExchrate) ->
+            
 (***************************************************************************)
 (* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
 (*         than Bid Limit Book Exchange Rate                               *)
@@ -195,6 +218,12 @@ CASE    GTE(askStopInverseExchrate, poolExchRate) ->
 (* Action: Execute Bid Limit Order                                         *)
 (***************************************************************************)      
 []      GT(bidLimitExchrate, poolExchRate) ->
+        IF askStopInverseExchRate <= limitBook[2]
+            THEN 
+                LET strikeExchRate == askStopInverseExchRate
+                    maxBid == MaxPoolBid(poolExchRate, strikeExchRate)
+                IN  IF maxBid > bidLimit
+                    THEN
 
 
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
