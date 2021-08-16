@@ -89,6 +89,7 @@ TypeInvariant ==
 \*  drops[ acct \X {coin, coin} ] is a balance of liquidity drop token
 /\  drops \in [ExchAccount \X PairSetType -> Amounts] 
 \*  limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+\*  Notice! Need to make this PairType only.  Will discuss Monday. Can't progress further without addressing this.
 /\  limits \in [ ExchAccount \X PairType -> Seq(PositionType)]
 \*  pools[ pair ] is a balance of liquidity within a pool tied to a pair <<a, b>> where balance is b coin
 /\  pools \in [ PairType -> Amounts ]
@@ -222,8 +223,15 @@ CASE    GTE(poolExchRate, askStopInverseExchrate) ->
             THEN 
                 LET strikeExchRate == askStopInverseExchRate
                     maxBid == MaxPoolBid(poolExchRate, strikeExchRate)
-                IN  IF maxBid > bidLimit
+                IN  IF maxBid > bidLimitAmount
                     THEN
+                        /\  limits' = [limits EXCEPT ![<<pair>>]
+                        /\  accounts' = []
+                        /\  pools' = []
+                    ELSE
+                        /\  limits' = []
+                        /\  accounts' = []
+                        /\  pools' = []
 
 
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
