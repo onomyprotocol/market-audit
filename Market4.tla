@@ -165,8 +165,38 @@ Withdraw(acct, amount, coinType) ==
                     IN newPosSeqPair[2]
             ]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
-    
-    
+
+Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
+(***************************************************************************)
+(* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
+(*         than or equal Ask Stop Book Inverse Exchange Rate               *)
+(***************************************************************************)
+CASE    GTE(askStopInverseExchrate, poolExchRate) ->
+    (***********************************************************************)
+    (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
+    (*           is equal to exchange rate of the head of the Bid Limit    *)
+    (*           book                                                      *)
+    (*                                                                     *)
+    (*   Action: Execute no loss trade                                     *)
+    (***********************************************************************)
+    CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
+    (***********************************************************************)
+    (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
+    (*           is less than the exchange rate of the head of the Bid     *)
+    (*           Limit book                                                *)
+    (*                                                                     *)
+    (*   Action: Execute Ask Stop Order                                    *)
+    (***********************************************************************)
+    []      LT(askStopInverseExchRate, bidLimitExchrate) ->
+(***************************************************************************)
+(* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
+(*         than Bid Limit Book Exchange Rate                               *)
+(*                                                                         *)
+(* Action: Execute Bid Limit Order                                         *)
+(***************************************************************************)      
+[]      GT(bidLimitExchrate, poolExchRate) ->
+
+
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
     LET acctLimits == limits[acct,<<askCoin, bidCoin>>]
         acctStops == stops[acct,<<askCoin, bidCoin>>]
