@@ -75,6 +75,7 @@ ExchRateType == {<<a, b>> : a \in Amounts, b \in Amounts}
 
 PositionType == 
 [
+    \* Account is used to 
     acct: ExchAccount,
     \* Exchange Rate is defined as
     \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
@@ -88,13 +89,12 @@ TypeInvariant ==
 /\  accounts \in [ExchAccount \X CoinType -> Amounts]
 \*  drops[ acct \X {coin, coin} ] is a balance of liquidity drop token
 /\  drops \in [ExchAccount \X PairSetType -> Amounts] 
-\*  limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
-\*  Notice! Need to make this PairType only.  Will discuss Monday. Can't progress further without addressing this.
-/\  limits \in [ ExchAccount \X PairType -> Seq(PositionType)]
+\*  limits[ pair ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+/\  limits \in [ PairType -> Seq(PositionType)]
 \*  pools[ pair ] is a balance of liquidity within a pool tied to a pair <<a, b>> where balance is b coin
 /\  pools \in [ PairType -> Amounts ]
-\*  stops[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
-/\  stops \in [ ExchAccount \X PairType -> Seq(PositionType)]
+\*  stops[ pair ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+/\  stops \in [ PairType -> Seq(PositionType)]
 \*  reserve[ coin ] is the amount of coins of type `coin` currently held in reserve
 /\  reserve \in [CoinType -> Amounts]
 
@@ -102,8 +102,9 @@ INIT ==
 \* initially, all ballances are 0 as all the coins are held by the reserve
 /\  accounts = [eaAndCt \in ExchAccount \X CoinType |-> 0]
 \* initially, there are no open positions    
-/\  limits = [accTAndPpc \in ExchAccount \X PairType |-> <<>>]
-/\  stops = [accTAndPpc \in ExchAccount \X PairType |-> <<>>] 
+/\  limits = [ pair \in PairType |-> <<>>]
+/\  pools = [ pair \in PairType |-> 0 ] 
+/\  stops = [ pair \in PairType |-> <<>>] 
 \* initially, all the coins are in the reserve
 /\  reserve = [type \in CoinType |-> MaxAmount]
 
@@ -119,6 +120,14 @@ Deposit(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << limits, stops >>
 
+SelectAcctSeq(acct, book) == 
+LET F[i \in 0..Len(book)] ==
+    IF i = 0 THEN << >>
+    ELSE 
+        IF book[i].account = acct THEN Append(F[i-1], book[i])
+        ELSE F[i-1]    
+        
+
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
 ConditionalWithdraw(acct, amount, coinType) ==
@@ -129,8 +138,8 @@ ConditionalWithdraw(acct, amount, coinType) ==
     \* It is up to the user to select and close positions before withdrawal
     /\  \A askCoin \in CoinType \ {coinType}:
         PositionInv( 
-            limits[acct, <<{askCoin, coinType}, coinType>>],
-            stops[acct, <<{askCoin, coinType}, coinType>>],
+            SelectAcctSeq(acct, limits[<<askCoin, coinType>>]),
+            SelectAcctSeq(acct, stops[<<askCoin, coinType>>]),
             newBalance
             )
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ - amount]
@@ -219,19 +228,49 @@ CASE    GTE(poolExchRate, askStopInverseExchrate) ->
 (* Action: Execute Bid Limit Order                                         *)
 (***************************************************************************)      
 []      GT(bidLimitExchrate, poolExchRate) ->
-        IF askStopInverseExchRate <= limitBook[2]
+        IF LTE(askStopInverseExchRate, limitBook[2].exchrate)
             THEN 
                 LET strikeExchRate == askStopInverseExchRate
-                    maxBid == MaxPoolBid(poolExchRate, strikeExchRate)
-                IN  IF maxBid > bidLimitAmount
+                    maxPoolBid == MaxPoolBid(poolExchRate, strikeExchRate)
+                    maxPoolAsk ==   maxBid * 
+                                    askStopInverseExchRate[1] / 
+                                    askStopInverseExchRate[2]
+                IN  IF maxPoolAsk > bidLimitAmount
                     THEN
-                        /\  limits' = [limits EXCEPT ![<<pair>>]
-                        /\  accounts' = []
-                        /\  pools' = []
+                        LET strikeBidAmount == bidLimitAmount
+                            strikeAskAmount ==  bidLimitAmount *
+                                                askStopInverseExchRate[1] / 
+                                                askStopInverseExchRate[2] 
+                        IN
+                        /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+                        /\  accounts' = 
+                            [ accounts EXCEPT 
+                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+                                ![<<acct, askCoin>>] = @ + strikeAskAmount
+                            ] 
+                        /\  pools' = [ pools EXCEPT
+                                ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+                                ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+                            ]
                     ELSE
-                        /\  limits' = []
-                        /\  accounts' = []
-                        /\  pools' = []
+                        LET strikeBidAmount ==  maxPoolAsk
+                            strikeAskAmount ==  maxPoolBid 
+                        IN
+                        /\  limits' = [ limits EXCEPT ![<<pair>>] = 
+                                Append([
+                                    account     |-> acct,
+                                    exchrate    |-> Head(@).exchrate,
+                                    amount      |-> Head(@).amount - strikeBidAmount
+                                ], Tail(@))
+                            ]
+                        /\  accounts' = [ accounts EXCEPT 
+                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+                                ![<<acct, askCoin>>] = @ + strikeAskAmount
+                            ] 
+                        /\  pools' = [ pools EXCEPT
+                                ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+                                ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+                            ]
 
 
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
