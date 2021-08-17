@@ -65,30 +65,29 @@ PositiveAmounts == 1..MaxAmount
 PairTypePre == {<<a, b>> : a \in CoinType, b \in CoinType}
 PairType == { ptp \in PairTypePre : ptp[1] # ptp[2] }
 
-ExchRateType == {<<a, b>> : a \in Amounts, b \in Amounts}
+ExchRateType == {<<a, b>> : a \in Amounts, b \in PositiveAmounts}
 
 PositionType == 
 [
-    acct: ExchAccount,
+    account: ExchAccount,
     \* Exchange Rate is defined as
-    \* Cardinality(exchrate[0]) / Cardinality(exchrate[1])
+    \* exchrate[1] / exchrate[2]
     exchrate: ExchRateType,
-    \* cardinality of amount is the amount
     amount: PositiveAmounts
 ]
 
 TypeInvariant ==  
 \* accounts[ <<acct, coin>> ] is the balance of `coin` in account `acct`
 /\  accounts \in [ExchAccount \X CoinType -> Amounts]
-\* limits[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+\* limits[ <<askCoin, bidCoin>> ] is a sequence of positions for that ask/bid pair
 /\  limits \in [PairType -> Seq(PositionType)]
-\* stops[ <<acct, <<pair, coin>> >> ] is a sequence of positions tied to `acct` and the pair+coin `<<pair, coin>>`
+\* limits[ <<askCoin, bidCoin>> ] is a sequence of positions for that ask/bid pair
 /\  stops \in [PairType -> Seq(PositionType)]
 \* reserve[ coin ] is the amount of coins of type `coin` currently held in reserve
 /\  reserve \in [CoinType -> Amounts]
 
 INIT ==     
-\* initially, all ballances are 0 as all the coins are held by the reserve
+\* initially, all balances are 0 as all the coins are held by the reserve
 /\  accounts = [eaAndCt \in ExchAccount \X CoinType |-> 0]
 \* initially, there are no open positions    
 /\  limits = [pair \in PairType |-> <<>>]
@@ -108,13 +107,7 @@ Deposit(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << limits, stops >>
 
-SelectAcctSeq(acct, book) == 
-LET F[i \in 0..Len(book)] ==
-    IF i = 0 THEN << >>
-    ELSE 
-        IF book[i].account = acct THEN Append(F[i-1], book[i])
-        ELSE F[i-1]
-IN  F[Len(book)]
+SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
 
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
@@ -181,9 +174,10 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
     LET seqOfPos == IF limitOrStop = "limit" 
                     THEN limits[<<askCoin, bidCoin>>] 
                     ELSE stops[<<askCoin, bidCoin>>] 
+        pos == seqOfPos[i] 
     IN 
-    /\  LET pos == seqOfPos[i] IN 
-        IF limitOrStop = "limit"
+    /\  pos.account = acct \* you can only close your own acct's positions
+    /\  IF limitOrStop = "limit"
         THEN
             \* Remove removes all copies, what if there are multiple equivalent positions?
             /\ limits' = [limits EXCEPT ![<<askCoin, bidCoin>>] = Remove(@, pos)]
@@ -202,7 +196,7 @@ NEXT ==
         \/  \E  limitOrStop \in {"limit", "stop"} :
             \E  askCoin \in CoinType :
             \E  bidCoin \in CoinType \ {askCoin} :
-            \/  \E  exchrate \in Amounts \X PositiveAmounts: \* what is exchrate 0 / x ?
+            \/  \E  exchrate \in ExchRateType:
                 \E  bidAmount \in PositiveAmounts :
                     Open(acct, askCoin, bidCoin, limitOrStop, [
                         account |-> acct,
@@ -258,7 +252,7 @@ PosSeqLengthBoundInv ==
         /\ BoundedLen( stops[pair] )
         
 \* One of the critical system invariants: For every account `acct` and pair of coins `pair`,
-\* the account balance for the bidCoin covers all open positions for `F[acct, pair]`  
+\* the account balance for the bidCoin covers all open positions for `pair` associated with `acct`  
 PositionsAreProvisionedInv == 
     \A acct \in ExchAccount:
     \A pair \in PairType:
