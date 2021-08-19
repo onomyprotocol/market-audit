@@ -133,8 +133,8 @@ Withdraw(acct, amount, coinType) ==
     \* It is up to the user to select and close positions before withdrawal
     /\  \A askCoin \in CoinType \ {coinType}:
         PositionInv( 
-            SelectAcctSeq(acct, limits[askCoin, coinType]),
-            SelectAcctSeq(acct, stops[askCoin, coinType]),
+            SelectAcctSeq(acct, limits[<<askCoin, coinType>>]),
+            SelectAcctSeq(acct, stops[<<askCoin, coinType>>]),
             newBalance
             )
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ - amount]
@@ -142,8 +142,8 @@ Withdraw(acct, amount, coinType) ==
     /\  UNCHANGED << drops, limits, pools, stops >>
     
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
-    LET limitBook == limits[askCoin, bidCoin]
-        stopBook == stops[askCoin, bidCoin]
+    LET limitBook == limits[<<askCoin, bidCoin>>]
+        stopBook == stops[<<askCoin, bidCoin>>]
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
     \* total amounts in all positions for any particular pair with the Bid 
@@ -162,7 +162,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < igte
                     THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ limits' = [ limits EXCEPT ![askCoin, bidCoin] =
+                  /\ limits' = [ limits EXCEPT ![<<askCoin, bidCoin>>] =
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
                      ] 
@@ -177,7 +177,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ stops' = [ stops EXCEPT ![askCoin, bidCoin] =
+                  /\ stops' = [ stops EXCEPT ![<<askCoin, bidCoin>>] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
                     ] 
@@ -186,91 +186,81 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
 
 Close(acct, askCoin, bidCoin, limitOrStop, i) ==
     LET seqOfPos == IF limitOrStop = "limit" 
-                    THEN limits[askCoin, bidCoin] 
-                    ELSE stops[askCoin, bidCoin] 
+                    THEN limits[<<askCoin, bidCoin>>] 
+                    ELSE stops[<<askCoin, bidCoin>>] 
         pos == seqOfPos[i] 
     IN 
     /\  pos.account = acct \* you can only close your own acct's positions
     /\  IF limitOrStop = "limit"
         THEN
             \* Remove removes all copies, what if there are multiple equivalent positions?
-            /\ limits' = [limits EXCEPT ![askCoin, bidCoin] = Remove(@, pos)]
+            /\ limits' = [limits EXCEPT ![<<askCoin, bidCoin>>] = Remove(@, pos)]
             /\ UNCHANGED << drops, pools, stops >>
         ELSE
-            /\ stops' = [stops EXCEPT ![askCoin, bidCoin] = Remove(@, pos)]
+            /\ stops' = [stops EXCEPT ![<<askCoin, bidCoin>>] = Remove(@, pos)]
             /\ UNCHANGED limits
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
 Provision(acct, askCoin, bidCoin, amt) ==
-LET 
-    \* It has to be the case that pools[weak,strong] <= pools[strong,weak]
-    strongAndWeak == 
-        IF pools[askCoin, bidCoin] <= pools[bidCoin, askCoin]
-        THEN <<bidCoin,askCoin>>
-        ELSE <<askCoin,bidCoin>>
-    strong == strongAndWeak[1]
-    weak == strongAndWeak[2]
-    balStrong == accounts[acct, strong]
-    balWeak == accounts[acct, weak]
+LET \* This is a hack below need to find out how to do this without making a set of 1 element
+    strong == CHOOSE strong \in {askCoin, bidCoin} : 
+        pools[<<{askCoin, bidCoin} \ {strong}, strong>>] <= 
+        pools[<<strong, {askCoin, bidCoin} \ {strong}>>]
+    weak == CHOOSE weak \in {askCoin, bidCoin} \ {strong} : TRUE
+    poolExchrate == << pools[<<weak, strong>>], pools[<<strong, weak>>] >>
+    balStrong == accounts[<<acct, strong>>].balance
+    balWeak == accounts[<<acct, weak>>].balance
     bidStrong == amt
     bidWeak == 
-        IF pools[weak, strong] > 0
-        THEN (bidStrong * pools[strong, weak]) \div pools[weak, strong]
-        ELSE 
-            IF amt <= balWeak
-            THEN balWeak
-            ELSE amt      
-IN  \* Enabling Condition: 
-    \* - balance of strong coin greater than bidStrong
-    \* - balance of weak coin greater than bidWeak
-    /\  balStrong >= bidStrong
-    /\  balWeak >= bidWeak 
+    IF  pools[<<weak, strong>>] > 0
+    THEN
+        (bidStrong * pools[<<strong, weak>>]) \div pools[<< weak, strong >>]
+    ELSE
+        IF amt <= balWeak
+            THEN    balWeak
+            ELSE    amt      
+IN  \* Enabling Condition: balance of strong coin greater than amt 
+    /\  balStrong >= amt
     /\  pools' = [ pools EXCEPT
-            ![weak, strong] = @ + bidStrong,
-            ![strong, weak] = @ + bidWeak
+            ![<<weak, strong>>] = @ + bidStrong,
+            ![<<strong, weak>>] = @ + bidWeak
         ]
     /\  drops' = [ drops EXCEPT 
             ![acct, {weak, strong}] = @ + bidStrong 
         ]
     /\  accounts' = [ accounts EXCEPT
-            ![acct, weak] = @ - bidWeak,
-            ![acct, strong] = @ - bidStrong
+            ![<<acct, weak>>].balance = @ - bidWeak,
+            ![<<acct, strong>>].balance = @ - bidStrong
         ]
-    /\ UNCHANGED << limits, stops, reserve >>
+    /\ UNCHANGED << limits, stops >>
 
 Liquidate(acct, askCoin, bidCoin, amt) ==
 \* Qualifying condition
 /\  LET 
-        \* It has to be the case that pools[weak,strong] <= pools[strong,weak]
-        strongAndWeak == 
-            IF pools[askCoin, bidCoin] <= pools[bidCoin, askCoin]
-            THEN <<bidCoin,askCoin>>
-            ELSE <<askCoin,bidCoin>>
-        strong == strongAndWeak[1]
-        weak == strongAndWeak[2]
+        strong == CHOOSE strong \in {askCoin, bidCoin} : 
+            pools[<<{{askCoin}, {bidCoin}} \ {strong}, strong>>] <= 
+            pools[<<strong, {askCoin, bidCoin} \ {strong}>>]
+        weak == CHOOSE weak \in {askCoin, bidCoin} \ {strong} : TRUE
         amtStrong == amt
         amtWeak == 
-            IF pools[weak, strong] > 0
-            THEN (amt * pools[strong, weak]) \div pools[weak, strong]
-            ELSE amt
+        IF pools[<<weak, strong>>] > 0
+        THEN (amt * pools[<<strong, weak>>]) \div pools[<<weak, strong>>]
+        ELSE amt
     IN
         \* Enabling Condition: 
         /\  amtStrong <= drops[acct, {weak, strong}]
-        /\  pools[strong,weak] >= amtStrong
-        /\  pools[weak,strong] >= amtWeak
         /\  accounts' = [ accounts EXCEPT
-                ![acct, weak] = @ + amtWeak,
-                ![acct, strong] = @ + amtStrong
+                ![<<acct, weak>>].balance = @ + amtWeak,
+                ![<<acct, strong>>].balance = @ + amtStrong
             ]
         /\  pools' = [ pools EXCEPT 
-                \* 
-                ![weak, strong] = @ - amtWeak,
-                ![strong, weak] = @ - amtStrong
+                ![<<weak, strong>>] = @ - @ * (amt \div pools[<<weak, strong>>]),
+                ![<<strong, weak>>] = @ - amt
             ]
         
         /\ drops' = [ drops EXCEPT 
-            ![acct, {weak, strong}] = @ - amtStrong ]
-        /\ UNCHANGED << limits, stops, reserve >>
+            ![acct, {weak, strong}] = @ - amt ]
+        /\ UNCHANGED << limits, stops >>
 
 
 NEXT == 
@@ -293,8 +283,8 @@ NEXT ==
                       ])
                 \*  Close
             \/  LET seq == IF limitOrStop = "limit"
-                           THEN limits[askCoin, bidCoin]
-                           ELSE stops[askCoin, bidCoin]
+                           THEN limits[<<askCoin, bidCoin>>]
+                           ELSE stops[<<askCoin, bidCoin>>]
                 IN 
                 \E i \in DOMAIN seq:
                     Close(acct, askCoin, bidCoin, limitOrStop, i)
@@ -306,13 +296,9 @@ Spec == INIT /\ [][NEXT]_vars
 
 \* For each coin, the amount in the system is constant
 CoinAmountInv == 
-   \A coin \in CoinType:
-       LET PlusAcct(acct, p) == p + accounts[acct, coin]
-           coinsInAccts == FoldSet( PlusAcct, 0, ExchAccount )
-           coinsInReserve == reserve[coin]
-           PlusPools(otherCoin, p) == p + pools[otherCoin, coin]
-           coinsInPools == FoldSet( PlusPools, 0, CoinType \ {coin} )
-       IN  coinsInPools + coinsInReserve + coinsInAccts = MaxAmount
+    \A coinType \in CoinType:
+        LET Plus(acct, p) == p + accounts[acct, coinType]
+        IN FoldSet( Plus, reserve[coinType], ExchAccount ) = MaxAmount
 
 \* If exchrate is a fraction <<a,b>>, then b != 0
 NoDivBy0Inv ==
