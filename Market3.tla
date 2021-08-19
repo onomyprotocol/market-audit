@@ -210,8 +210,6 @@ LET
         ELSE <<askCoin,bidCoin>>
     strong == strongAndWeak[1]
     weak == strongAndWeak[2]
-    \* exchrate < 1 by construction
-    poolExchrate == << pools[weak, strong], pools[strong, weak] >>
     balStrong == accounts[acct, strong]
     balWeak == accounts[acct, weak]
     bidStrong == amt
@@ -252,24 +250,26 @@ Liquidate(acct, askCoin, bidCoin, amt) ==
         weak == strongAndWeak[2]
         amtStrong == amt
         amtWeak == 
-        IF pools[weak, strong] > 0
-        THEN (amt * pools[strong, weak]) \div pools[weak, strong]
-        ELSE amt
+            IF pools[weak, strong] > 0
+            THEN (amt * pools[strong, weak]) \div pools[weak, strong]
+            ELSE amt
     IN
         \* Enabling Condition: 
         /\  amtStrong <= drops[acct, {weak, strong}]
+        /\  pools[strong,weak] >= amtStrong
+        /\  pools[weak,strong] >= amtWeak
         /\  accounts' = [ accounts EXCEPT
                 ![acct, weak] = @ + amtWeak,
                 ![acct, strong] = @ + amtStrong
             ]
         /\  pools' = [ pools EXCEPT 
                 \* 
-                ![weak, strong] = @ - @ * (amt \div pools[weak, strong]),
-                ![strong, weak] = @ - amt
+                ![weak, strong] = @ - amtWeak,
+                ![strong, weak] = @ - amtStrong
             ]
         
         /\ drops' = [ drops EXCEPT 
-            ![acct, {weak, strong}] = @ - amt ]
+            ![acct, {weak, strong}] = @ - amtStrong ]
         /\ UNCHANGED << limits, stops, reserve >>
 
 
@@ -306,9 +306,13 @@ Spec == INIT /\ [][NEXT]_vars
 
 \* For each coin, the amount in the system is constant
 CoinAmountInv == 
-    \A coinType \in CoinType:
-        LET Plus(acct, p) == p + accounts[acct, coinType]
-        IN FoldSet( Plus, reserve[coinType], ExchAccount ) = MaxAmount
+   \A coin \in CoinType:
+       LET PlusAcct(acct, p) == p + accounts[acct, coin]
+           coinsInAccts == FoldSet( PlusAcct, 0, ExchAccount )
+           coinsInReserve == reserve[coin]
+           PlusPools(otherCoin, p) == p + pools[otherCoin, coin]
+           coinsInPools == FoldSet( PlusPools, 0, CoinType \ {coin} )
+       IN  coinsInPools + coinsInReserve + coinsInAccts = MaxAmount
 
 \* If exchrate is a fraction <<a,b>>, then b != 0
 NoDivBy0Inv ==
