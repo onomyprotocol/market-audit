@@ -201,19 +201,20 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
             /\ UNCHANGED limits
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
-Provision(acct, pair, amt) ==
+Provision(acct, askCoin, bidCoin, amt) ==
 LET \* This is a hack below need to find out how to do this without making a set of 1 element
-    strong == CHOOSE strong \in pair : 
-        pools[<<strong, pair \ {strong}>>] >= pools[<<pair \ {strong}, strong>>]
-    weak == CHOOSE weak \in pair \ {strong} : TRUE
+    strong == CHOOSE strong \in {askCoin, bidCoin} : 
+        pools[<<{askCoin, bidCoin} \ {strong}, strong>>] <= 
+        pools[<<strong, {askCoin, bidCoin} \ {strong}>>]
+    weak == CHOOSE weak \in {askCoin, bidCoin} \ {strong} : TRUE
     poolExchrate == << pools[<<weak, strong>>], pools[<<strong, weak>>] >>
     balStrong == accounts[<<acct, strong>>].balance
     balWeak == accounts[<<acct, weak>>].balance
     bidStrong == amt
     bidWeak == 
-    IF  pools[<<pair, strong>>] > 0
+    IF  pools[<<weak, strong>>] > 0
     THEN
-        (bidStrong * pools[<<pair, weak>>]) \div pools[<<pair, strong>>]
+        (bidStrong * pools[<<strong, weak>>]) \div pools[<< weak, strong >>]
     ELSE
         IF amt <= balWeak
             THEN    balWeak
@@ -221,11 +222,11 @@ LET \* This is a hack below need to find out how to do this without making a set
 IN  \* Enabling Condition: balance of strong coin greater than amt 
     /\  balStrong >= amt
     /\  pools' = [ pools EXCEPT
-            ![<<pair>>] = @ + bidStrong,
-            ![<<pair[2], pair[1]>>] = @ + bidWeak
+            ![<<weak, strong>>] = @ + bidStrong,
+            ![<<strong, weak>>] = @ + bidWeak
         ]
     /\  drops' = [ drops EXCEPT 
-            ![<<acct, pair>>] = @ + bidStrong 
+            ![acct, {weak, strong}] = @ + bidStrong 
         ]
     /\  accounts' = [ accounts EXCEPT
             ![<<acct, weak>>].balance = @ - bidWeak,
@@ -233,31 +234,32 @@ IN  \* Enabling Condition: balance of strong coin greater than amt
         ]
     /\ UNCHANGED << limits, stops >>
 
-Liquidate(acct, pair, amt) ==
+Liquidate(acct, askCoin, bidCoin, amt) ==
 \* Qualifying condition
 /\  LET 
-        strong == CHOOSE strong \in pair : 
-            pools[<<strong, pair \ {strong}>>] >= pools[<<pair \ {strong}, strong>>]
-        weak == CHOOSE weak \in pair \ {strong} : TRUE
+        strong == CHOOSE strong \in {askCoin, bidCoin} : 
+            pools[<<{{askCoin}, {bidCoin}} \ {strong}, strong>>] <= 
+            pools[<<strong, {askCoin, bidCoin} \ {strong}>>]
+        weak == CHOOSE weak \in {askCoin, bidCoin} \ {strong} : TRUE
         amtStrong == amt
         amtWeak == 
-        IF pools[<<pair, strong>>] > 0
-        THEN (amt * pools[<<pair, weak>>]) \div pools[<<pair, strong>>]
+        IF pools[<<weak, strong>>] > 0
+        THEN (amt * pools[<<strong, weak>>]) \div pools[<<weak, strong>>]
         ELSE amt
     IN
         \* Enabling Condition: 
-        /\  amtStrong <= drops[<<acct, pair>>]
+        /\  amtStrong <= drops[acct, {weak, strong}]
         /\  accounts' = [ accounts EXCEPT
                 ![<<acct, weak>>].balance = @ + amtWeak,
                 ![<<acct, strong>>].balance = @ + amtStrong
             ]
         /\  pools' = [ pools EXCEPT 
-                ![<<pair, strong>>] = @ - @ * (amt \div pools[<<weak, strong>>]),
-                ![<<pair, weak>>] = @ - amt
+                ![<<weak, strong>>] = @ - @ * (amt \div pools[<<weak, strong>>]),
+                ![<<strong, weak>>] = @ - amt
             ]
         
         /\ drops' = [ drops EXCEPT 
-            ![<<acct, pair>>] = @ - amt ]
+            ![acct, {weak, strong}] = @ - amt ]
         /\ UNCHANGED << limits, stops >>
 
 
@@ -286,7 +288,10 @@ NEXT ==
                 IN 
                 \E i \in DOMAIN seq:
                     Close(acct, askCoin, bidCoin, limitOrStop, i)
-    
+            \/  \E  poolAmount \in PositiveAmounts :
+                \/  Liquidate(acct, askCoin, bidCoin, poolAmount)
+                \/  Provision(acct, askCoin, bidCoin, poolAmount)
+
 Spec == INIT /\ [][NEXT]_vars
 
 \* For each coin, the amount in the system is constant
