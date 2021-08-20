@@ -129,22 +129,23 @@ Withdraw(acct, amount, coinType) ==
 (*                                                                         *)
 (* Integrate over poolAsk on lhs and poolBid & erate on rhs then           *)
 (* substitute and simplify                                                 *)
+(*                                                                         *)
+(* MaxPoolBid ==    [(BidBalanceInitial * exchrateFinal) \                 *)
+(*                  (2 * exchrateFinal + exchrateInitial)] *               *)
+(*                  exchrateFinal -                                        *)
+(*                  AskBalanceInitial                                      *)
 (***************************************************************************)
 
-\* MPB(a/b, c/d) = d * (a / b) * (2 - ad/bc) - c
-\*               = 2 * ad/b - (ad)^2/cb^2 - c
-\*               = ( 2abcd - (ad)^2 - (cb)^2)/(cb^2)
-\*               = -( ad + bc )^2 / (cb^2) 
+\* MPB(a/b, c/d) = b * (c/d) / (2 * c/d + a/b) * (c/d) - a
+
 MaxPoolBid(erateFinal, erateInitial) ==
-erateInitial[2] * 
-(
-    (erateFinal[1] \ erateFinal[2]) *
-    (
-        2 - 
-        (erateFinal[1] * erateInitial[2]) \
-        (erateFinal[2] * erateInitial[1])
-    )
-) - erateInitial[1]
+\* AskBalInit / BidBalInit = erateInit[1] / erateInit[2]
+LET a == erateInitial[1]
+    b == erateInitial[2]
+    c == erateInitial[1]
+    d == erateFinal[2]
+IN
+    (((((b * c) \div d) \div ((2 * c) * b + a * d)) \div (d * b)) * c) \div d - a
 
 \* Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 \* LET askStops == stopsUpd[bidCoin, askCoin]
