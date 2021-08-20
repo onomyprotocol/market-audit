@@ -201,76 +201,52 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
             /\ UNCHANGED limits
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
-Provision(acct, askCoin, bidCoin, amt) ==
-LET 
-    \* It has to be the case that pools[weak,strong] <= pools[strong,weak]
-    strongAndWeak == 
-        IF pools[askCoin, bidCoin] <= pools[bidCoin, askCoin]
-        THEN <<bidCoin,askCoin>>
-        ELSE <<askCoin,bidCoin>>
-    strong == strongAndWeak[1]
-    weak == strongAndWeak[2]
-    balStrong == accounts[acct, strong]
-    balWeak == accounts[acct, weak]
-    bidStrong == amt
-    bidWeak == 
-        IF pools[weak, strong] > 0
-        THEN (bidStrong * pools[strong, weak]) \div pools[weak, strong]
-        ELSE 
-            IF amt <= balWeak
-            THEN balWeak
-            ELSE amt      
-IN  \* Enabling Condition: 
-    \* - balance of strong coin greater than bidStrong
-    \* - balance of weak coin greater than bidWeak
-    /\  balStrong >= bidStrong
-    /\  balWeak >= bidWeak 
-    /\  pools' = [ pools EXCEPT
-            ![weak, strong] = @ + bidStrong,
-            ![strong, weak] = @ + bidWeak
-        ]
-    /\  drops' = [ drops EXCEPT 
-            ![acct, {weak, strong}] = @ + bidStrong 
-        ]
-    /\  accounts' = [ accounts EXCEPT
-            ![acct, weak] = @ - bidWeak,
-            ![acct, strong] = @ - bidStrong
-        ]
-    /\ UNCHANGED << limits, stops, reserve >>
+Provision(acct, aCoin, bCoin, dropAmt) ==
+/\  LET dropsTotal == Sum({ drops[account, {aCoin, bCoin}]  : account \in ExchAccount })
+    IN  IF dropsTotal = 0
+        THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
+        ELSE    LET ratio == dropAmt \div dropsTotal
+                    aCoinAmt == ratio * pools[bCoin, aCoin]
+                    bCoinAmt == ratio * pools[aCoin, bCoin]
+                IN 
+                    /\  accounts[acct, aCoin] >= aCoinAmt
+                    /\  accounts[acct, bCoin] >= bCoinAmt
+                    /\  pools' = [ pools EXCEPT
+                            ![aCoin, bCoin] = @ + bCoinAmt,
+                            ![bCoin, aCoin] = @ + aCoinAmt
+                        ]
+                    /\  drops' = [ drops EXCEPT 
+                            ![acct, {aCoin, bCoin}] = @ + dropAmt 
+                        ]
+                    /\  accounts' = [ accounts EXCEPT
+                            ![acct, aCoin] = @ - aCoinAmt,
+                            ![acct, bCoin] = @ - bCoinAmt
+                        ]
+                    /\ UNCHANGED << limits, stops, reserve >>
 
-Liquidate(acct, askCoin, bidCoin, amt) ==
-\* Qualifying condition
-/\  LET 
-        \* It has to be the case that pools[weak,strong] <= pools[strong,weak]
-        strongAndWeak == 
-            IF pools[askCoin, bidCoin] <= pools[bidCoin, askCoin]
-            THEN <<bidCoin,askCoin>>
-            ELSE <<askCoin,bidCoin>>
-        strong == strongAndWeak[1]
-        weak == strongAndWeak[2]
-        amtStrong == amt
-        amtWeak == 
-            IF pools[weak, strong] > 0
-            THEN (amt * pools[strong, weak]) \div pools[weak, strong]
-            ELSE amt
-    IN
-        \* Enabling Condition: 
-        /\  amtStrong <= drops[acct, {weak, strong}]
-        /\  pools[strong,weak] >= amtStrong
-        /\  pools[weak,strong] >= amtWeak
-        /\  accounts' = [ accounts EXCEPT
-                ![acct, weak] = @ + amtWeak,
-                ![acct, strong] = @ + amtStrong
-            ]
-        /\  pools' = [ pools EXCEPT 
-                \* 
-                ![weak, strong] = @ - amtWeak,
-                ![strong, weak] = @ - amtStrong
-            ]
-        
-        /\ drops' = [ drops EXCEPT 
-            ![acct, {weak, strong}] = @ - amtStrong ]
-        /\ UNCHANGED << limits, stops, reserve >>
+Liquidate(acct, aCoin, bCoin, dropAmt) ==
+/\  LET dropsTotal == Sum({ drops[account, {aCoin, bCoin}]  : account \in ExchAccount })
+    IN  IF dropsTotal = 0
+        THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
+        ELSE    LET ratio == dropAmt \div dropsTotal
+                    aCoinAmt == ratio * accounts[acct, aCoin]
+                    bCoinAmt == ratio * accounts[acct, bCoin]
+                IN 
+                    /\  pools[bCoin,aCoin] >= aCoinAmt
+                    /\  pools[aCoin,bCoin] >= bCoinAmt
+                    /\  accounts' = [ accounts EXCEPT
+                            ![acct, aCoin] = @ + aCoinAmt,
+                            ![acct, bCoin] = @ + bCoinAmt
+                        ]
+                    /\  pools' = [ pools EXCEPT 
+                            \* 
+                            ![aCoin, bCoin] = @ - aCoinAmt,
+                            ![bCoin, aCoin] = @ - bCoinAmt
+                        ]
+                    
+                    /\ drops' = [ drops EXCEPT 
+                        ![acct, {aCoin, bCoin}] = @ - dropAmt ]
+                    /\ UNCHANGED << limits, stops, reserve >>
 
 
 NEXT == 
