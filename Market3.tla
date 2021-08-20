@@ -37,28 +37,6 @@ SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
 PositionInv( limitsSeq, stopsSeq, balance ) ==
     SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
 
-TruncatePositions( limitsSeq, stopsSeq, balance ) == 
-    \* we use CHOOSE to get one pair, but the cutoff pair is not necessarily unique:
-    \* consider: balance = 1, limtsSeq (amounts) = << 1,1 >>, stopsSeq (amounts) = << 1, 1 >>
-    \* Truncation returns either << <<>>, <<1>> >> or << <<1>>, <<>> >>
-    \* It is up to the implementation to define a deterministic way of resolving 
-    \* cases with multiple solutions. 
-    \* For example, the implementation could prefer to truncate limits over stops whenever possible
-    LET cutoffs == CHOOSE pair \in (DOMAIN limitsSeq \union {0}) \X (DOMAIN stopsSeq \union {0}):
-        LET i == pair[1]
-            j == pair[2] 
-        IN 
-        /\ PositionInv( SubSeq(limitsSeq, 1, i) , SubSeq(stopsSeq, 1, j), balance )
-        /\ i < Len(limitsSeq) => 
-            ~PositionInv( SubSeq(limitsSeq, 1, i+1) , SubSeq(stopsSeq, 1, j), balance ) 
-        /\ j < Len(stopsSeq) =>
-            ~PositionInv( SubSeq(limitsSeq, 1, i) , SubSeq(stopsSeq, 1, j +1 ), balance ) 
-    IN << 
-        SubSeq(limitsSeq, 1, cutoffs[1]), 
-        SubSeq(stopsSeq, 1, cutoffs[2])
-        >>
-
-
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
 
@@ -152,6 +130,11 @@ Withdraw(acct, amount, coinType) ==
 (* Integrate over poolAsk on lhs and poolBid & erate on rhs then           *)
 (* substitute and simplify                                                 *)
 (***************************************************************************)
+
+\* MPB(a/b, c/d) = d * (a / b) * (2 - ad/bc) - c
+\*               = 2 * ad/b - (ad)^2/cb^2 - c
+\*               = ( 2abcd - (ad)^2 - (cb)^2)/(cb^2)
+\*               = -( ad + bc )^2 / (cb^2) 
 MaxPoolBid(erateFinal, erateInitial) ==
 erateInitial[2] * 
 (
@@ -163,230 +146,231 @@ erateInitial[2] *
     )
 ) - erateInitial[1]
 
-Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
-LET askStops == stopsUpd[bidCoin, askCoin]
-    bidLimits == limitsUpd[askCoin, bidCoin]
-    poolExchrate == pools[bidCoin, askCoin] /
-                    pools[askCoin, bidCoin]
-    askStopHead == Head(stops[bidCoin, askCoin])
-    askStopHeadInvExchrate == << 
-        askStopHead.exchrate[2], 
-        askStopHead.exchrate[1] 
-    >>
-    bidLimitHead == Head(limits[bidCoin, askCoin])
-    bidLimitHeadExchrate == bidLimitHead.exchrate
-IN
-(***************************************************************************)
-(* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
-(*         than or equal Ask Stop Book Inverse Exchange Rate               *)
-(***************************************************************************)
-CASE    GTE(poolExchRate, askStopHeadInvExchrate) ->
-    (***********************************************************************)
-    (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
-    (*           is equal to exchange rate of the head of the Bid Limit    *)
-    (*           book                                                      *)
-    (*                                                                     *)
-    (*   Action: Execute no loss trade                                     *)
-    (***********************************************************************)
-    CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
-            \*  Bid Limits are the limiting amount
-            CASE    Head(askStops).amount >= Head(bidLimits).amount ->
-                    LET strikeExchRate == bidLimitExchRate
-                        maxPoolAsk ==   Head(bidLimits).amount
-                        maxPoolBid ==   (maxPoolAsk * strikeExchRate[1]) / strikExchRate[2]
-                    IN
+\* Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
+\* LET askStops == stopsUpd[bidCoin, askCoin]
+\*     bidLimits == limitsUpd[askCoin, bidCoin]
+\*     poolExchrate == pools[bidCoin, askCoin] /
+\*                     pools[askCoin, bidCoin]
+\*     askStopHead == Head(stops[bidCoin, askCoin])
+\*     \* exchrate[1] can be 0 !
+\*     askStopHeadInvExchrate == << 
+\*         askStopHead.exchrate[2], 
+\*         askStopHead.exchrate[1] 
+\*     >>
+\*     bidLimitHead == Head(limits[bidCoin, askCoin])
+\*     bidLimitHeadExchrate == bidLimitHead.exchrate
+\* IN
+\* (***************************************************************************)
+\* (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
+\* (*         than or equal Ask Stop Book Inverse Exchange Rate               *)
+\* (***************************************************************************)
+\* CASE    GTE(poolExchRate, askStopHeadInvExchrate) ->
+\*     (***********************************************************************)
+\*     (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
+\*     (*           is equal to exchange rate of the head of the Bid Limit    *)
+\*     (*           book                                                      *)
+\*     (*                                                                     *)
+\*     (*   Action: Execute no loss trade                                     *)
+\*     (***********************************************************************)
+\*     CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
+\*             \*  Bid Limits are the limiting amount
+\*             CASE    Head(askStops).amount >= Head(bidLimits).amount ->
+\*                     LET strikeExchRate == bidLimitExchRate
+\*                         maxPoolAsk ==   Head(bidLimits).amount
+\*                         maxPoolBid ==   (maxPoolAsk * strikeExchRate[1]) / strikExchRate[2]
+\*                     IN
                 
-    (***********************************************************************)
-    (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
-    (*           is less than the exchange rate of the head of the Bid     *)
-    (*           Limit book                                                *)
-    (*                                                                     *)
-    (*   Action: Execute Ask Stop Order                                    *)
-    (***********************************************************************)
-    []      LT(askStopHeadInvExchRate, bidLimitHeadExchrate) ->
-            \*  The next order to be enabled will be the bid Limit head
-            \*  Order execution will fill order until bid limit head exchange
-            \*  rate is reached.
-            CASE LTE(bidLimitExchrate, stopBook[2].exchrate) ->
+\*     (***********************************************************************)
+\*     (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
+\*     (*           is less than the exchange rate of the head of the Bid     *)
+\*     (*           Limit book                                                *)
+\*     (*                                                                     *)
+\*     (*   Action: Execute Ask Stop Order                                    *)
+\*     (***********************************************************************)
+\*     []      LT(askStopHeadInvExchRate, bidLimitHeadExchrate) ->
+\*             \*  The next order to be enabled will be the bid Limit head
+\*             \*  Order execution will fill order until bid limit head exchange
+\*             \*  rate is reached.
+\*             CASE LTE(bidLimitExchrate, stopBook[2].exchrate) ->
             
-                LET strikeExchRate == bidLimitExchRate
-                    \*  Pool bid coin is the order ask coin
-                    maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
-                    maxPoolAsk ==   maxBid * 
-                                    strikeExchRate[1] / 
-                                    strikExchRate[2]
-                IN  IF maxPoolAsk > bidLimitAmount
-                    THEN
-                        LET strikeBidAmount == bidLimitAmount
-                            strikeAskAmount ==  strikeBidAmount *
-                                                strikeExchRate[1] / 
-                                                strikeExchRate[2] 
-                        IN
-                        /\  stops' = [limits EXCEPT ![<<pair>>] = Tail(@)]
-                        /\  accounts' = 
-                            [ accounts EXCEPT 
-                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                                ![<<acct, askCoin>>] = @ + strikeAskAmount
-                            ] 
-                        /\  pools' = 
-                            [ pools EXCEPT
-                                ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                                ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                            ]
-                    ELSE
-                        LET strikeBidAmount ==  maxPoolAsk
-                            strikeAskAmount ==  maxPoolBid 
-                        IN
-                        /\  limits' = [ limits EXCEPT ![<<pair>>] = 
-                                Append([
-                                    account     |-> acct,
-                                    exchrate    |-> Head(@).exchrate,
-                                    amount      |-> Head(@).amount - strikeBidAmount
-                                ], Tail(@))
-                            ]
-                        /\  accounts' = [ accounts EXCEPT 
-                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                                ![<<acct, askCoin>>] = @ + strikeAskAmount
-                            ] 
-                        /\  pools' = [ pools EXCEPT
-                                ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                                ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                            ]
-            []  GT(bidLimitExchrate, stopBook[2].exchrate) ->
-                LET strikeExchRate == stopBook[2].exchrate
-                    maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
-                    maxPoolAsk ==   maxBid * 
-                                    strikeExchRate[1] / 
-                                    strikeExchRate[2]
-                IN  IF maxPoolAsk > bidLimitAmount
-                    THEN
-                        LET strikeBidAmount ==  bidLimitAmount
-                            strikeAskAmount ==  strikeBidAmount *
-                                                strikeExchRate[1] / 
-                                                stikeExchRate[2] 
-                        IN
-                        /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
-                        /\  accounts' = 
-                            [ accounts EXCEPT 
-                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                                ![<<acct, askCoin>>] = @ + strikeAskAmount
-                            ] 
-                        /\  pools' = [ pools EXCEPT
-                                ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                                ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                            ]
-                    ELSE
-                        LET strikeBidAmount ==  maxPoolAsk
-                            strikeAskAmount ==  maxPoolBid 
-                        IN
-                        /\  limits' = [ limits EXCEPT ![<<pair>>] = 
-                                Append([
-                                    account     |-> acct,
-                                    exchrate    |-> Head(@).exchrate,
-                                    amount      |-> Head(@).amount - strikeBidAmount
-                                ], Tail(@))
-                            ]
-                        /\  accounts' = [ accounts EXCEPT 
-                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                                ![<<acct, askCoin>>] = @ + strikeAskAmount
-                            ] 
-                        /\  pools' = [ pools EXCEPT
-                                ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                                ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                            ]
+\*                 LET strikeExchRate == bidLimitExchRate
+\*                     \*  Pool bid coin is the order ask coin
+\*                     maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
+\*                     maxPoolAsk ==   maxBid * 
+\*                                     strikeExchRate[1] / 
+\*                                     strikExchRate[2]
+\*                 IN  IF maxPoolAsk > bidLimitAmount
+\*                     THEN
+\*                         LET strikeBidAmount == bidLimitAmount
+\*                             strikeAskAmount ==  strikeBidAmount *
+\*                                                 strikeExchRate[1] / 
+\*                                                 strikeExchRate[2] 
+\*                         IN
+\*                         /\  stops' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+\*                         /\  accounts' = 
+\*                             [ accounts EXCEPT 
+\*                                 ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                                 ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                             ] 
+\*                         /\  pools' = 
+\*                             [ pools EXCEPT
+\*                                 ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                                 ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                             ]
+\*                     ELSE
+\*                         LET strikeBidAmount ==  maxPoolAsk
+\*                             strikeAskAmount ==  maxPoolBid 
+\*                         IN
+\*                         /\  limits' = [ limits EXCEPT ![<<pair>>] = 
+\*                                 Append([
+\*                                     account     |-> acct,
+\*                                     exchrate    |-> Head(@).exchrate,
+\*                                     amount      |-> Head(@).amount - strikeBidAmount
+\*                                 ], Tail(@))
+\*                             ]
+\*                         /\  accounts' = [ accounts EXCEPT 
+\*                                 ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                                 ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                             ] 
+\*                         /\  pools' = [ pools EXCEPT
+\*                                 ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                                 ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                             ]
+\*             []  GT(bidLimitExchrate, stopBook[2].exchrate) ->
+\*                 LET strikeExchRate == stopBook[2].exchrate
+\*                     maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
+\*                     maxPoolAsk ==   maxBid * 
+\*                                     strikeExchRate[1] / 
+\*                                     strikeExchRate[2]
+\*                 IN  IF maxPoolAsk > bidLimitAmount
+\*                     THEN
+\*                         LET strikeBidAmount ==  bidLimitAmount
+\*                             strikeAskAmount ==  strikeBidAmount *
+\*                                                 strikeExchRate[1] / 
+\*                                                 stikeExchRate[2] 
+\*                         IN
+\*                         /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+\*                         /\  accounts' = 
+\*                             [ accounts EXCEPT 
+\*                                 ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                                 ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                             ] 
+\*                         /\  pools' = [ pools EXCEPT
+\*                                 ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                                 ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                             ]
+\*                     ELSE
+\*                         LET strikeBidAmount ==  maxPoolAsk
+\*                             strikeAskAmount ==  maxPoolBid 
+\*                         IN
+\*                         /\  limits' = [ limits EXCEPT ![<<pair>>] = 
+\*                                 Append([
+\*                                     account     |-> acct,
+\*                                     exchrate    |-> Head(@).exchrate,
+\*                                     amount      |-> Head(@).amount - strikeBidAmount
+\*                                 ], Tail(@))
+\*                             ]
+\*                         /\  accounts' = [ accounts EXCEPT 
+\*                                 ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                                 ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                             ] 
+\*                         /\  pools' = [ pools EXCEPT
+\*                                 ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                                 ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                             ]
             
-(***************************************************************************)
-(* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
-(*         than Bid Limit Book Exchange Rate                               *)
-(*                                                                         *)
-(* Action: Execute Bid Limit Order                                         *)
-(***************************************************************************)      
-[]      GT(bidLimitExchrate, poolExchRate) ->
-        CASE LTE(askStopInverseExchRate, limitBook[2].exchrate) ->
+\* (***************************************************************************)
+\* (* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
+\* (*         than Bid Limit Book Exchange Rate                               *)
+\* (*                                                                         *)
+\* (* Action: Execute Bid Limit Order                                         *)
+\* (***************************************************************************)      
+\* []      GT(bidLimitExchrate, poolExchRate) ->
+\*         CASE LTE(askStopInverseExchRate, limitBook[2].exchrate) ->
         
-            LET strikeExchRate == askStopInverseExchRate
-                maxPoolBid == MaxPoolBid(poolExchRate, strikeExchRate)
-                maxPoolAsk ==   maxBid * 
-                                askStopInverseExchRate[1] / 
-                                askStopInverseExchRate[2]
-            IN  IF maxPoolAsk > bidLimitAmount
-                THEN
-                    LET strikeBidAmount == bidLimitAmount
-                        strikeAskAmount ==  bidLimitAmount *
-                                            strikeExchRate[1] / 
-                                            strikeExchRate[2] 
-                    IN
-                    /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
-                    /\  accounts' = 
-                        [ accounts EXCEPT 
-                            ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                            ![<<acct, askCoin>>] = @ + strikeAskAmount
-                        ] 
-                    /\  pools' = [ pools EXCEPT
-                            ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                            ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                        ]
-                ELSE
-                    LET strikeBidAmount ==  maxPoolAsk
-                        strikeAskAmount ==  maxPoolBid 
-                    IN
-                    /\  limits' = [ limits EXCEPT ![<<pair>>] = 
-                            Append([
-                                account     |-> acct,
-                                exchrate    |-> Head(@).exchrate,
-                                amount      |-> Head(@).amount - strikeBidAmount
-                            ], Tail(@))
-                        ]
-                    /\  accounts' = [ accounts EXCEPT 
-                            ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                            ![<<acct, askCoin>>] = @ + strikeAskAmount
-                        ] 
-                    /\  pools' = [ pools EXCEPT
-                            ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                            ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                        ]
-        []  GT(askStopInverseExchRate, limitBook[2].exchrate) ->
-            LET strikeExchRate == limitBook[2].exchrate
-                maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
-                maxPoolAsk ==   maxBid * 
-                                limitBook[2].exchrate[1] / 
-                                limitBook[2].exchrate[2]
-            IN  IF maxPoolAsk > bidLimitAmount
-                THEN
-                    LET strikeBidAmount ==  bidLimitAmount
-                        strikeAskAmount ==  bidLimitAmount *
-                                            strikeExchRate[1] / 
-                                            stikeExchRate[2] 
-                    IN
-                    /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
-                    /\  accounts' = 
-                        [ accounts EXCEPT 
-                            ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                            ![<<acct, askCoin>>] = @ + strikeAskAmount
-                        ] 
-                    /\  pools' = [ pools EXCEPT
-                            ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                            ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                        ]
-                ELSE
-                    LET strikeBidAmount ==  maxPoolAsk
-                        strikeAskAmount ==  maxPoolBid 
-                    IN
-                    /\  limits' = [ limits EXCEPT ![<<pair>>] = 
-                            Append([
-                                account     |-> acct,
-                                exchrate    |-> Head(@).exchrate,
-                                amount      |-> Head(@).amount - strikeBidAmount
-                            ], Tail(@))
-                        ]
-                    /\  accounts' = [ accounts EXCEPT 
-                            ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-                            ![<<acct, askCoin>>] = @ + strikeAskAmount
-                        ] 
-                    /\  pools' = [ pools EXCEPT
-                            ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-                            ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
-                        ]
+\*             LET strikeExchRate == askStopInverseExchRate
+\*                 maxPoolBid == MaxPoolBid(poolExchRate, strikeExchRate)
+\*                 maxPoolAsk ==   maxBid * 
+\*                                 askStopInverseExchRate[1] / 
+\*                                 askStopInverseExchRate[2]
+\*             IN  IF maxPoolAsk > bidLimitAmount
+\*                 THEN
+\*                     LET strikeBidAmount == bidLimitAmount
+\*                         strikeAskAmount ==  bidLimitAmount *
+\*                                             strikeExchRate[1] / 
+\*                                             strikeExchRate[2] 
+\*                     IN
+\*                     /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+\*                     /\  accounts' = 
+\*                         [ accounts EXCEPT 
+\*                             ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                             ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                         ] 
+\*                     /\  pools' = [ pools EXCEPT
+\*                             ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                             ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                         ]
+\*                 ELSE
+\*                     LET strikeBidAmount ==  maxPoolAsk
+\*                         strikeAskAmount ==  maxPoolBid 
+\*                     IN
+\*                     /\  limits' = [ limits EXCEPT ![<<pair>>] = 
+\*                             Append([
+\*                                 account     |-> acct,
+\*                                 exchrate    |-> Head(@).exchrate,
+\*                                 amount      |-> Head(@).amount - strikeBidAmount
+\*                             ], Tail(@))
+\*                         ]
+\*                     /\  accounts' = [ accounts EXCEPT 
+\*                             ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                             ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                         ] 
+\*                     /\  pools' = [ pools EXCEPT
+\*                             ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                             ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                         ]
+\*         []  GT(askStopInverseExchRate, limitBook[2].exchrate) ->
+\*             LET strikeExchRate == limitBook[2].exchrate
+\*                 maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
+\*                 maxPoolAsk ==   maxBid * 
+\*                                 limitBook[2].exchrate[1] / 
+\*                                 limitBook[2].exchrate[2]
+\*             IN  IF maxPoolAsk > bidLimitAmount
+\*                 THEN
+\*                     LET strikeBidAmount ==  bidLimitAmount
+\*                         strikeAskAmount ==  bidLimitAmount *
+\*                                             strikeExchRate[1] / 
+\*                                             stikeExchRate[2] 
+\*                     IN
+\*                     /\  limits' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+\*                     /\  accounts' = 
+\*                         [ accounts EXCEPT 
+\*                             ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                             ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                         ] 
+\*                     /\  pools' = [ pools EXCEPT
+\*                             ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                             ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                         ]
+\*                 ELSE
+\*                     LET strikeBidAmount ==  maxPoolAsk
+\*                         strikeAskAmount ==  maxPoolBid 
+\*                     IN
+\*                     /\  limits' = [ limits EXCEPT ![<<pair>>] = 
+\*                             Append([
+\*                                 account     |-> acct,
+\*                                 exchrate    |-> Head(@).exchrate,
+\*                                 amount      |-> Head(@).amount - strikeBidAmount
+\*                             ], Tail(@))
+\*                         ]
+\*                     /\  accounts' = [ accounts EXCEPT 
+\*                             ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+\*                             ![<<acct, askCoin>>] = @ + strikeAskAmount
+\*                         ] 
+\*                     /\  pools' = [ pools EXCEPT
+\*                             ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+\*                             ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+\*                         ]
 
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
     LET limitBook == limits[askCoin, bidCoin]
@@ -449,7 +433,8 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
 Provision(acct, aCoin, bCoin, dropAmt) ==
-/\  LET dropsTotal == Sum({ drops[account, {aCoin, bCoin}]  : account \in ExchAccount })
+    LET PlusDrops(account, p) == p + drops[account,{aCoin,bCoin}]
+        dropsTotal == FoldSet(PlusDrops, 0, ExchAccount)
     IN  IF dropsTotal = 0
         THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
         ELSE    LET ratio == dropAmt \div dropsTotal
@@ -472,7 +457,8 @@ Provision(acct, aCoin, bCoin, dropAmt) ==
                     /\ UNCHANGED << limits, stops, reserve >>
 
 Liquidate(acct, aCoin, bCoin, dropAmt) ==
-/\  LET dropsTotal == Sum({ drops[account, {aCoin, bCoin}]  : account \in ExchAccount })
+    LET PlusDrops(account, p) == p + drops[account,{aCoin,bCoin}]
+        dropsTotal == FoldSet(PlusDrops, 0, ExchAccount)
     IN  IF dropsTotal = 0
         THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
         ELSE    LET ratio == dropAmt \div dropsTotal
@@ -526,6 +512,60 @@ NEXT ==
                 \/  Provision(acct, askCoin, bidCoin, poolAmount)
 
 Spec == INIT /\ [][NEXT]_vars
+
+\* Fix a state and two pool balances at an exchrate. Fix drops.  
+\* If the system reaches a state with the same drops and the same exchrate for the given pools,
+\* the pool balances at the new state are not less than in the fixed state
+(* 
+    The actual property, not expressible in TLA+, would be (for each A,B coin pair):
+
+    [](  
+        \E constDrops:
+        \E poolsAB:
+        \E poolsBA:
+        /\ pools[A,B] = poolsAB
+        /\ pools[B,A] = poolsBA
+        /\ drops = constDrops
+        /\ 
+            X ( \* 1-step operator in LTL    
+                ( 
+                    pools[A,B] * poolsBA # poolsAB * pools[B,A]
+                ) 
+                U \* until operator in LTL (weak until `W` if "infinite cycles" are allowed)
+                ( 
+                    drops = constDrops 
+                    => 
+                    (
+                        /\ pools[A,B] * poolsBA = poolsAB * pools[B,A]
+                        /\ pools[A,B] >= poolsAB
+                        /\ pools[B,A] >= poolsBA 
+                    )
+                ) 
+            )
+    )
+
+*)
+
+\* Simpler constraint, only over two consecutive states
+AMMPropertyLite == 
+    [][
+    \A askCoin \in CoinType:
+    \A bidCoin \in CoinType \ {askCoin}:
+        \* If, in a successive step, drops and pool exchrate is unchanged, pool balances must not decrease
+        \* since we're checking identity, it doesn't matter if we check exchrate or its inverse
+        LET balanceAB( poolsFn ) == poolsFn[askCoin,bidCoin]
+            balanceBA( poolsFn ) == poolsFn[bidCoin,askCoin]
+            Exchrate( poolsFn ) == << balanceAB(poolsFn), balanceBA(poolsFn) >>
+        IN
+        ( 
+            /\ drops = drops' 
+            /\ Exchrate(pools) = Exchrate(pools') 
+        ) => (
+            /\ balanceAB(pools') >= balanceAB(pools)
+            /\ balanceBA(pools') >= balanceBA(pools)
+        )
+    ]_<<drops,pools>>
+
 
 \* For each coin, the amount in the system is constant
 CoinAmountInv == 
