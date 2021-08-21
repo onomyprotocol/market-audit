@@ -1,0 +1,503 @@
+@!@!@STARTMSG 2262:0 @!@!@
+TLC2 Version 2.16 of 31 December 2020 (rev: cdddf55)
+@!@!@ENDMSG 2262 @!@!@
+@!@!@STARTMSG 2187:0 @!@!@
+Running breadth-first search Model-Checking with fp 68 and seed -2087683573139418909 with 1 worker on 32 cores with 227MB heap and 64MB offheap memory (Windows 10 10.0 x86, Oracle Corporation 1.8.0_301 x86, MSBDiskFPSet, DiskStateQueue).
+@!@!@ENDMSG 2187 @!@!@
+@!@!@STARTMSG 2220:0 @!@!@
+Starting SANY...
+@!@!@ENDMSG 2220 @!@!@
+Parsing file C:\Users\Charles Dusek\Projects\market-audit\MCMarket3.tla
+Parsing file C:\Users\Charles Dusek\Projects\market-audit\Market3.tla
+Parsing file C:\Users\Charles Dusek\AppData\Local\Temp\TLC.tla
+Parsing file C:\Users\Charles Dusek\AppData\Local\Temp\FiniteSets.tla
+Parsing file C:\Users\Charles Dusek\Projects\market-audit\FiniteSetsExt.tla
+Parsing file C:\Users\Charles Dusek\AppData\Local\Temp\Naturals.tla
+Parsing file C:\Users\Charles Dusek\AppData\Local\Temp\Sequences.tla
+Parsing file C:\Users\Charles Dusek\Projects\market-audit\SequencesExt.tla
+Parsing file C:\Users\Charles Dusek\Projects\market-audit\Functions.tla
+Parsing file C:\Users\Charles Dusek\Projects\market-audit\Folds.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module Folds
+Semantic processing of module Functions
+Semantic processing of module FiniteSetsExt
+Semantic processing of module SequencesExt
+Semantic processing of module Market3
+Semantic processing of module TLC
+Semantic processing of module MCMarket3
+@!@!@STARTMSG 2219:0 @!@!@
+SANY finished.
+@!@!@ENDMSG 2219 @!@!@
+@!@!@STARTMSG 2185:0 @!@!@
+Starting... (2021-08-21 09:45:09)
+@!@!@ENDMSG 2185 @!@!@
+@!@!@STARTMSG 2189:0 @!@!@
+Computing initial states...
+@!@!@ENDMSG 2189 @!@!@
+@!@!@STARTMSG 2190:0 @!@!@
+Finished computing initial states: 1 distinct state generated at 2021-08-21 09:45:09.
+@!@!@ENDMSG 2190 @!@!@
+@!@!@STARTMSG 2200:0 @!@!@
+Progress(4) at 2021-08-21 09:45:12: 65,543 states generated (65,543 s/min), 17,389 distinct states found (17,389 ds/min), 17,115 states left on queue.
+@!@!@ENDMSG 2200 @!@!@
+@!@!@STARTMSG 2200:0 @!@!@
+Progress(5) at 2021-08-21 09:46:12: 1,534,038 states generated (1,468,495 s/min), 329,961 distinct states found (312,572 ds/min), 324,078 states left on queue.
+@!@!@ENDMSG 2200 @!@!@
+@!@!@STARTMSG 2201:0 @!@!@
+The coverage statistics at 2021-08-21 09:46:12
+@!@!@ENDMSG 2201 @!@!@
+@!@!@STARTMSG 2773:0 @!@!@
+<INIT line 79, col 1 to line 79, col 4 of module Market3>: 1:1
+@!@!@ENDMSG 2773 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 81, col 1 to line 88, col 47 of module Market3: 1
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<Deposit line 96, col 1 to line 96, col 31 of module Market3>: 24008:71707
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 97, col 9 to line 97, col 35 of module Market3: 71707
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 97, col 9 to line 97, col 14 of module Market3: 105903
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 97, col 19 to line 97, col 35 of module Market3: 105903
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 98, col 9 to line 98, col 68 of module Market3: 71707
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 99, col 9 to line 99, col 60 of module Market3: 71707
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 100, col 9 to line 100, col 51 of module Market3: 71707
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<Withdraw line 106, col 1 to line 106, col 32 of module Market3 (109 5 120 51)>: 0:8659
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 109, col 9 to line 109, col 42 of module Market3: 8659
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 109, col 9 to line 109, col 14 of module Market3: 105903
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 109, col 19 to line 109, col 42 of module Market3: 105903
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 38, col 5 to line 38, col 59 of module Market3: 17318
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 38, col 5 to line 38, col 48 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 38, col 53 to line 38, col 59 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 114, col 13 to line 114, col 58 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 102, col 30 to line 102, col 76 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 114, col 27 to line 114, col 30 of module Market3: 5985
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 114, col 33 to line 114, col 57 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 115, col 13 to line 115, col 57 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 102, col 30 to line 102, col 76 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 115, col 27 to line 115, col 30 of module Market3: 5592
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 115, col 33 to line 115, col 56 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 116, col 13 to line 116, col 22 of module Market3: 29550
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 112, col 24 to line 112, col 44 of module Market3: 17099
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 118, col 9 to line 118, col 68 of module Market3: 8659
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 119, col 9 to line 119, col 60 of module Market3: 8659
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 120, col 9 to line 120, col 51 of module Market3: 8659
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<Open line 122, col 1 to line 122, col 46 of module Market3 (129 5 163 54)>: 305952:600120
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 129, col 8 to line 131, col 60 of module Market3: 600120
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 129, col 8 to line 129, col 14 of module Market3: 5083344
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 129, col 21 to line 131, col 60 of module Market3: 5083348
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 129, col 21 to line 130, col 61 of module Market3: 5083354
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 129, col 21 to line 129, col 30 of module Market3: 5083358
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 130, col 21 to line 130, col 61 of module Market3: 5083363
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 34, col 19 to line 34, col 62 of module Market3: 5083366
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 195, col 3 to line 198, col 28 of module SequencesExt: 5083372
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 17, col 7 to line 20, col 40 of module Folds: 5083377
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||||line 17, col 18 to line 17, col 25 of module Folds: 5083380
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 21, col 7 to line 21, col 13 of module Folds: 5083380
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||||line 21, col 7 to line 21, col 10 of module Folds: 5083386
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||||line 21, col 12 to line 21, col 12 of module Folds: 5083391
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 195, col 40 to line 195, col 43 of module SequencesExt: 5083395
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 198, col 18 to line 198, col 27 of module SequencesExt: 5083400
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 34, col 58 to line 34, col 60 of module Market3: 5083408
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 130, col 31 to line 130, col 60 of module Market3: 5083413
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 102, col 30 to line 102, col 76 of module Market3: 5083416
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 130, col 45 to line 130, col 48 of module Market3: 474624
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 130, col 51 to line 130, col 59 of module Market3: 5083417
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 123, col 22 to line 123, col 45 of module Market3: 5083423
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 131, col 21 to line 131, col 60 of module Market3: 5083428
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 34, col 19 to line 34, col 62 of module Market3: 5083432
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 195, col 3 to line 198, col 28 of module SequencesExt: 5083439
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 17, col 7 to line 20, col 40 of module Folds: 5083452
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 17, col 18 to line 17, col 25 of module Folds: 5083457
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 21, col 7 to line 21, col 13 of module Folds: 5083463
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 21, col 7 to line 21, col 10 of module Folds: 5083471
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 21, col 12 to line 21, col 12 of module Folds: 5083477
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 195, col 40 to line 195, col 43 of module SequencesExt: 5083482
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 198, col 18 to line 198, col 27 of module SequencesExt: 5083488
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 34, col 58 to line 34, col 60 of module Market3: 5083488
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 131, col 31 to line 131, col 59 of module Market3: 5083495
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 102, col 30 to line 102, col 76 of module Market3: 5083501
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 131, col 45 to line 131, col 48 of module Market3: 445824
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 131, col 51 to line 131, col 58 of module Market3: 5083511
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 124, col 21 to line 124, col 43 of module Market3: 5083518
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 124, col 21 to line 124, col 25 of module Market3: 5083524
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 124, col 21 to line 124, col 43 of module Market3: 5083524
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 133, col 16 to line 133, col 36 of module Market3: 600120
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 139, col 22 to line 142, col 63 of module Market3: 280668
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 140, col 24 to line 140, col 31 of module Market3: 38784
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 30, col 14 to line 30, col 35 of module Market3: 11892
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 30, col 14 to line 30, col 22 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 30, col 27 to line 30, col 35 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 141, col 30 to line 141, col 49 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 141, col 52 to line 141, col 63 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 28, col 13 to line 28, col 33 of module Market3: 7500
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 28, col 13 to line 28, col 21 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 28, col 25 to line 28, col 33 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 142, col 29 to line 142, col 40 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 142, col 43 to line 142, col 62 of module Market3: 19392
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 139, col 31 to line 139, col 45 of module Market3: 319452
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 143, col 22 to line 146, col 22 of module Market3: 300060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 138, col 32 to line 138, col 75 of module Market3: 300060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 147, col 20 to line 147, col 54 of module Market3: 300060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 154, col 22 to line 157, col 63 of module Market3: 282060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 155, col 24 to line 155, col 31 of module Market3: 36000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 26, col 14 to line 26, col 35 of module Market3: 10500
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 26, col 14 to line 26, col 22 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 26, col 27 to line 26, col 35 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 156, col 30 to line 156, col 49 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 156, col 52 to line 156, col 63 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 24, col 13 to line 24, col 33 of module Market3: 7500
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 24, col 13 to line 24, col 21 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 24, col 25 to line 24, col 33 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 157, col 29 to line 157, col 40 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 157, col 43 to line 157, col 62 of module Market3: 18000
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 154, col 31 to line 154, col 45 of module Market3: 318060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 158, col 22 to line 161, col 21 of module Market3: 300060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 153, col 32 to line 153, col 75 of module Market3: 300060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 162, col 21 to line 162, col 56 of module Market3: 300060
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 163, col 8 to line 163, col 54 of module Market3: 600120
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<Provision line 182, col 1 to line 182, col 38 of module Market3 (185 9 204 61)>: 0:423642
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 185, col 12 to line 185, col 25 of module Market3: 423648
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 186, col 17 to line 186, col 76 of module Market3: 423642
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 193, col 25 to line 196, col 25 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 197, col 25 to line 199, col 25 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 200, col 25 to line 203, col 25 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 204, col 24 to line 204, col 61 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<Liquidate line 206, col 1 to line 206, col 38 of module Market3 (209 9 229 61)>: 0:423651
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 209, col 12 to line 209, col 25 of module Market3: 423654
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 209, col 12 to line 209, col 21 of module Market3: 423654
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 210, col 17 to line 210, col 76 of module Market3: 423654
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 217, col 25 to line 220, col 25 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 221, col 25 to line 225, col 25 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 227, col 24 to line 228, col 63 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 229, col 24 to line 229, col 61 of module Market3: 0
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2772:0 @!@!@
+<NEXT line 232, col 1 to line 232, col 4 of module Market3 (255 17 256 65)>: 0:6418
+@!@!@ENDMSG 2772 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 171, col 9 to line 171, col 26 of module Market3: 19253
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 171, col 9 to line 171, col 19 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 171, col 9 to line 171, col 11 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 169, col 16 to line 169, col 26 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 169, col 16 to line 169, col 23 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||||line 166, col 21 to line 168, col 48 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 166, col 24 to line 166, col 44 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 167, col 26 to line 167, col 49 of module Market3: 6643
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||||line 168, col 26 to line 168, col 48 of module Market3: 6192
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||||line 169, col 25 to line 169, col 25 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 171, col 23 to line 171, col 26 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 172, col 12 to line 172, col 32 of module Market3: 6418
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 175, col 16 to line 175, col 77 of module Market3: 3322
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 176, col 16 to line 176, col 50 of module Market3: 3322
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 178, col 16 to line 178, col 75 of module Market3: 3096
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 179, col 16 to line 179, col 31 of module Market3: 3096
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 180, col 8 to line 180, col 54 of module Market3: 6418
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 256, col 27 to line 256, col 30 of module Market3: 12835
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 256, col 33 to line 256, col 39 of module Market3: 12836
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 256, col 42 to line 256, col 48 of module Market3: 12836
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 256, col 51 to line 256, col 61 of module Market3: 12836
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 256, col 64 to line 256, col 64 of module Market3: 12836
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 255, col 26 to line 255, col 35 of module Market3: 141221
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |line 255, col 33 to line 255, col 35 of module Market3: 141221
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  ||line 251, col 28 to line 253, col 55 of module Market3: 141221
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 251, col 31 to line 251, col 51 of module Market3: 141221
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 252, col 33 to line 252, col 56 of module Market3: 70613
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  |||line 253, col 33 to line 253, col 55 of module Market3: 70608
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2774:0 @!@!@
+<TypeInvariant line 65, col 1 to line 65, col 13 of module Market3>
+@!@!@ENDMSG 2774 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 67, col 1 to line 77, col 37 of module Market3: 329977
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2202:0 @!@!@
+End of statistics.
+@!@!@ENDMSG 2202 @!@!@
+@!@!@STARTMSG 2200:0 @!@!@
+Progress(5) at 2021-08-21 09:47:12: 3,007,940 states generated (1,473,902 s/min), 621,760 distinct states found (291,799 ds/min), 610,298 states left on queue.
+@!@!@ENDMSG 2200 @!@!@

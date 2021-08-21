@@ -40,9 +40,8 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 (* Integrate over poolAsk on lhs and poolBid & erate on rhs then           *)
 (* substitute and simplify                                                 *)
 (*                                                                         *)
-(* MaxPoolBid ==    [(BidBalanceInitial * exchrateFinal) \                 *)
-(*                  (2 * exchrateFinal + exchrateInitial)] *               *)
-(*                  exchrateFinal -                                        *)
+(* MaxPoolBid ==    [(BidBalanceInitial * exchrateFinal^2) \               *)
+(*                  (2 * exchrateFinal + exchrateInitial)] -               *)
 (*                  AskBalanceInitial                                      *)
 (***************************************************************************)
 
@@ -57,15 +56,11 @@ LET a == erateInitial[1]
 IN
     (
         (
-            (
-                (
-                    (b * c) \div d
-                ) \div (
-                    (2 * c) * b + a * d
-                )
-            ) \div (d * b)
-        ) * c
-    ) \div d - a
+            b * c^2
+        ) \div (
+            2 * c + a
+        )   
+    ) - a
 
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
