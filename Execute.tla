@@ -60,49 +60,94 @@ IN
     ) - a
 
 NoLoss(acct, askCoin, askAmount, bidCoin, bidAmount)
-/\  accounts' = 
-    [ accounts EXCEPT 
-        ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-        ![<<acct, askCoin>>] = @ + strikeAskAmount
-    ]
+LET limitBook == limits[askCoin, bidCoin]
+    limitHead == Head(limitBook)
+    stopBook  == stops[bidCoin, askCoin]
+    stopHead == Head(stopBook)
+    strikeAmount ==
+        IF 
+        THEN limitHead.amount
+        ELSE stopHead.amount
+    strikeExchrate == limitHead.exchrate
+IN
+    \* IF TRUE
+    CASE limitHead.amount <= stopHead.MaxAmount ->
+        \* IF TRUE, then 
+        CASE limitHead.amount <= accounts[limitHead.acct, bidCoin] ->
+            CASE limitHead.amount <= accounts[stopHead.acct, bidCoin]
+            
+    /\  accounts' = 
+        [ accounts EXCEPT 
+            ![acct, bidCoin] = @ - strikeBidAmount,
+            ![acct, askCoin] = @ + strikeAskAmount
+        ]
+
+    /\  limits' =
+        [ limits EXCEPT
+            ![askCoin, bidCoin]
+        ]
 
 AskStop(acct, askCoin, askAmount, bidCoin, bidAmount) ==
-/\  stops' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+(***************************************************************)
+(*  In this case, the next order to be enabled will be the head*) 
+(*  of the bid limits.                                         *)
+(*  Order execution will fill order until bid limit head       *)
+(*  exchange rate is reached.                                  *)
+(***************************************************************)
+CASE LTE(bidLimitHeadExchrate, askStops[2].exchrate) ->
+    LET strikeExchRate == bidLimitExchRate
+        \*  Pool bid coin is the order ask coin
+        maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
+        maxPoolAsk ==   maxBid * 
+                        strikeExchRate[1] / 
+                        strikExchRate[2]
+    IN  IF maxPoolAsk > bidLimitAmount
+        THEN
+            LET strikeBidAmount ==  bidLimitAmount
+                strikeAskAmount ==  strikeBidAmount *
+                                    strikeExchRate[1] / 
+                                    strikeExchRate[2] 
+            IN
+                
+
+LET stopBook == stops[bidCoin, askCoin]
+    stopHead
+/\  stops' = [stops EXCEPT ![<<pair>>] = Tail(@)]
 /\  accounts' = 
     [ accounts EXCEPT 
-        ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-        ![<<acct, askCoin>>] = @ + strikeAskAmount
+        ![acct, bidCoin] = @ - strikeBidAmount,
+        ![acct, askCoin] = @ + strikeAskAmount
     ] 
 /\  pools' = 
     [ pools EXCEPT
-        ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-        ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+        ![askCoin, bidCoin] = @ + strikeBidAmount,
+        ![bidCoin, askCoin] = @ - strikeAskAmount 
     ]
 
 BidLimit(acct, askCoin, askAmount, bidCoin, bidAmount) ==
 /\  limits' = [limits EXCEPT ![askCoin, bidCoin] = Tail(@)]
 /\  accounts' = 
     [ accounts EXCEPT 
-        ![<<acct, bidCoin>>] = @ - strikeBidAmount,
-        ![<<acct, askCoin>>] = @ + strikeAskAmount
+        ![acct, bidCoin] = @ - strikeBidAmount,
+        ![acct, askCoin] = @ + strikeAskAmount
     ] 
 /\  pools' = 
     [ pools EXCEPT
-        ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
-        ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+        ![askCoin, bidCoin] = @ + strikeBidAmount,
+        ![bidCoin, askCoin] = @ - strikeAskAmount 
     ]
 
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
     
-    askStops == stops[bidCoin, askCoin]
+    askStops == stopsUpd[bidCoin, askCoin]
     askStopHead == Head(askStops)
     askStopHeadInvExchrate == << 
         askStopHead.exchrate[2], 
         askStopHead.exchrate[1] 
     >>
     
-    bidLimits == limits[askCoin, bidCoin]
+    bidLimits == limitsUpd[askCoin, bidCoin]
     bidLimitHead == Head(bidLimits)
     bidLimitHeadExchrate == bidLimitHead.exchrate
     
@@ -110,63 +155,35 @@ LET
                     pools[askCoin, bidCoin]
 
 IN
-(***************************************************************************)
-(* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
-(*         than or equal Ask Stop Book Inverse Exchange Rate               *)
-(*                                                                         *)
-(*         If TRUE Then Ask Stop Head Position is Enabled                  *)
-(***************************************************************************)
-CASE    GTE(poolExchrate, askStopHeadInvExchrate) ->
-    (***********************************************************************)
-    (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
-    (*           is equal to exchange rate of the head of the Bid Limit    *)
-    (*           book                                                      *)
-    (*                                                                     *)
-    (*   Action: Execute no loss trade                                     *)
-    (***********************************************************************)
-    CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
-            \*  Bid Limits are the limiting amount
-            CASE    askStopHead.amount >= Head(bidLimits).amount ->
-                    LET strikeExchRate == bidLimitExchRate
-                        askAmount ==   bidLimitHead.amount
-                        bidAmount ==   (maxPoolAsk * strikeExchRate[1]) / strikExchRate[2]
-                    IN
-                        /\  accounts' = [accounts EXCEPT
-                                ![bidLimitHead.acct, askCoin] = @ + askAmount
-                                ![bidLimitHead.acct, bidCoin] = @ - bidAmount
-                                ![askStopHead.acct, askCoin] = @ - askAmount
-                                ![askStopHead.acct, bidCoin] = @ + bidAmount
-                            ]
-                
-    (***********************************************************************)
-    (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
-    (*           is less than the exchange rate of the head of the Bid     *)
-    (*           Limit book                                                *)
-    (*                                                                     *)
-    (*   Action: Execute Ask Stop Order                                    *)
-    (***********************************************************************)
-    []      LT(askStopHeadInvExchrate, bidLimitHeadExchrate) ->
-            (***************************************************************)
-            (*  In this case, the next order to be enabled will be the head*) 
-            (*  of the bid limits.                                         *)
-            (*  Order execution will fill order until bid limit head       *)
-            (*  exchange rate is reached.                                  *)
-            (***************************************************************)
-            CASE LTE(bidLimitHeadExchrate, askStops[2].exchrate) ->
-                LET strikeExchRate == bidLimitExchRate
-                    \*  Pool bid coin is the order ask coin
-                    maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
-                    maxPoolAsk ==   maxBid * 
-                                    strikeExchRate[1] / 
-                                    strikExchRate[2]
-                IN  IF maxPoolAsk > bidLimitAmount
-                    THEN
-                        LET strikeBidAmount ==  bidLimitAmount
-                            strikeAskAmount ==  strikeBidAmount *
-                                                strikeExchRate[1] / 
-                                                strikeExchRate[2] 
-                        IN
-                            AskStop(acct, askCoin, askAmount, bidCoin, bidAmount)
+    (***************************************************************************)
+    (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
+    (*         than or equal Ask Stop Book Inverse Exchange Rate               *)
+    (*                                                                         *)
+    (*         If TRUE Then Ask Stop Head Position is Enabled                  *)
+    (***************************************************************************)
+    CASE    GTE(poolExchrate, askStopHeadInvExchrate) ->
+        (***********************************************************************)
+        (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
+        (*           is equal to exchange rate of the head of the Bid Limit    *)
+        (*           book                                                      *)
+        (*                                                                     *)
+        (*   Action: Execute no loss trade                                     *)
+        (***********************************************************************)
+        CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
+            \* The only parameters needed to execute a no-loss trade is
+            \* the ask coin and the bid coin.
+            NoLoss(askCoin, bidCoin)
+                 
+        (***********************************************************************)
+        (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
+        (*           is less than the exchange rate of the head of the Bid     *)
+        (*           Limit book                                                *)
+        (*                                                                     *)
+        (*   Action: Execute Ask Stop Order                                    *)
+        (***********************************************************************)
+        []      LT(askStopHeadInvExchrate, bidLimitHeadExchrate) ->
+            AskStop(askCoin, bidCoin)
+            
 
 =============================================================================
 \* Modification History
