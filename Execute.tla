@@ -59,55 +59,32 @@ IN
         )   
     ) - a
 
-NoLoss(acct, askCoin, askAmount, bidCoin, bidAmount)
-LET limitBook == limits[askCoin, bidCoin]
-    limitHead == Head(limitBook)
-    stopBook  == stops[bidCoin, askCoin]
-    stopHead == Head(stopBook)
-    strikeAmount ==
-        IF 
-        THEN limitHead.amount
-        ELSE stopHead.amount
-    strikeExchrate == limitHead.exchrate
+AskStop(askCoin, bidCoin) =
+
+LET
+    bidLimits = limits[askCoin, bidCoin]
+    askStops = stops[bidCoin, askCoin]
 IN
-    \* IF TRUE
-    CASE limitHead.amount <= stopHead.MaxAmount ->
-        \* IF TRUE, then 
-        CASE limitHead.amount <= accounts[limitHead.acct, bidCoin] ->
-            CASE limitHead.amount <= accounts[stopHead.acct, bidCoin]
-            
-    /\  accounts' = 
-        [ accounts EXCEPT 
-            ![acct, bidCoin] = @ - strikeBidAmount,
-            ![acct, askCoin] = @ + strikeAskAmount
-        ]
-
-    /\  limits' =
-        [ limits EXCEPT
-            ![askCoin, bidCoin]
-        ]
-
-AskStop(acct, askCoin, askAmount, bidCoin, bidAmount) ==
-(***************************************************************)
-(*  In this case, the next order to be enabled will be the head*) 
-(*  of the bid limits.                                         *)
-(*  Order execution will fill order until bid limit head       *)
-(*  exchange rate is reached.                                  *)
-(***************************************************************)
-CASE LTE(bidLimitHeadExchrate, askStops[2].exchrate) ->
-    LET strikeExchRate == bidLimitExchRate
-        \*  Pool bid coin is the order ask coin
-        maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
-        maxPoolAsk ==   maxBid * 
-                        strikeExchRate[1] / 
-                        strikExchRate[2]
-    IN  IF maxPoolAsk > bidLimitAmount
-        THEN
-            LET strikeBidAmount ==  bidLimitAmount
-                strikeAskAmount ==  strikeBidAmount *
-                                    strikeExchRate[1] / 
-                                    strikeExchRate[2] 
-            IN
+    (***************************************************************)
+    (*  In this case, the next order to be enabled will be the head*) 
+    (*  of the bid limits.                                         *)
+    (*  Order execution will fill order until bid limit head       *)
+    (*  exchange rate is reached.                                  *)
+    (***************************************************************)
+    CASE LTE(bidLimits[1].exchrate, askStops[2].exchrate) ->
+        LET strikeExchRate == bidLimitExchRate
+            \*  Pool bid coin is the order ask coin
+            maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
+            maxPoolAsk ==   maxBid * 
+                            strikeExchRate[1] / 
+                            strikExchRate[2]
+        IN  IF maxPoolAsk > bidLimitAmount
+            THEN
+                LET strikeBidAmount ==  bidLimitAmount
+                    strikeAskAmount ==  strikeBidAmount *
+                                        strikeExchRate[1] / 
+                                        strikeExchRate[2] 
+                IN
                 
 
 LET stopBook == stops[bidCoin, askCoin]
