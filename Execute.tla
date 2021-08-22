@@ -44,9 +44,6 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 (*                  (2 * exchrateFinal + exchrateInitial)] -               *)
 (*                  AskBalanceInitial                                      *)
 (***************************************************************************)
-
-\* MPB(a/b, c/d) = b * (c/d) / (2 * c/d + a/b) * (c/d) - a
-
 MaxPoolBid(erateFinal, erateInitial) ==
 \* AskBalInit / BidBalInit = erateInit[1] / erateInit[2]
 LET a == erateInitial[1]
@@ -61,6 +58,39 @@ IN
             2 * c + a
         )   
     ) - a
+
+NoLoss(acct, askCoin, askAmount, bidCoin, bidAmount)
+/\  accounts' = 
+    [ accounts EXCEPT 
+        ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+        ![<<acct, askCoin>>] = @ + strikeAskAmount
+    ]
+
+AskStop(acct, askCoin, askAmount, bidCoin, bidAmount) ==
+/\  stops' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+/\  accounts' = 
+    [ accounts EXCEPT 
+        ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+        ![<<acct, askCoin>>] = @ + strikeAskAmount
+    ] 
+/\  pools' = 
+    [ pools EXCEPT
+        ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+        ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+    ]
+
+BidLimit(acct, askCoin, askAmount, bidCoin, bidAmount) ==
+/\  limits' = [limits EXCEPT ![askCoin, bidCoin] = Tail(@)]
+/\  accounts' = 
+    [ accounts EXCEPT 
+        ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+        ![<<acct, askCoin>>] = @ + strikeAskAmount
+    ] 
+/\  pools' = 
+    [ pools EXCEPT
+        ![<<askCoin, bidCoin>>] = @ + strikeBidAmount,
+        ![<<bidCoin, askCoin>>] = @ - strikeAskAmount 
+    ]
 
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
@@ -123,6 +153,20 @@ CASE    GTE(poolExchrate, askStopHeadInvExchrate) ->
             (*  exchange rate is reached.                                  *)
             (***************************************************************)
             CASE LTE(bidLimitHeadExchrate, askStops[2].exchrate) ->
+                LET strikeExchRate == bidLimitExchRate
+                    \*  Pool bid coin is the order ask coin
+                    maxPoolBid ==   MaxPoolBid(poolExchRate, strikeExchRate)
+                    maxPoolAsk ==   maxBid * 
+                                    strikeExchRate[1] / 
+                                    strikExchRate[2]
+                IN  IF maxPoolAsk > bidLimitAmount
+                    THEN
+                        LET strikeBidAmount ==  bidLimitAmount
+                            strikeAskAmount ==  strikeBidAmount *
+                                                strikeExchRate[1] / 
+                                                strikeExchRate[2] 
+                        IN
+                            AskStop(acct, askCoin, askAmount, bidCoin, bidAmount)
 
 =============================================================================
 \* Modification History
