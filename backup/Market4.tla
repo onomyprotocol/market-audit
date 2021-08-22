@@ -190,11 +190,17 @@ CASE    GTE(poolExchRate, askStopInverseExchrate) ->
             \*  Bid Limits are the limiting amount
             CASE    Head(askStops).amount >= Head(bidLimits).amount ->
                     LET strikeExchRate == bidLimitExchRate
-                        maxPoolAsk ==   Head(bidLimits).amount
-                        maxPoolBid ==   maxPoolAsk * 
+                        strikeBidAmount ==   Head(bidLimits).amount
+                        strikeAskAmount ==   strikeBidAmount * 
                                         strikeExchRate[1] / 
                                         strikExchRate[2]
-                    IN
+                    IN  
+                        /\  stops' = [limits EXCEPT ![<<pair>>] = Tail(@)]
+                        /\  accounts' = 
+                            [ accounts EXCEPT 
+                                ![<<acct, bidCoin>>] = @ - strikeBidAmount,
+                                ![<<acct, askCoin>>] = @ + strikeAskAmount
+                            ]
                 
     (***********************************************************************)
     (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
