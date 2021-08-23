@@ -1,4 +1,5 @@
------------------------------ MODULE MarketHeplers -------------------------
+--------------------------- MODULE MarketHelpers ---------------------------
+EXTENDS Integers
 \* Nat tuple (numerator/denominator) inequality helper functions
 \* All equalities assume Natural increments
 GT(a, b) == a[1]*b[2] > a[2]*b[1]
@@ -24,17 +25,19 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 (*                  (2 * exchrateFinal + exchrateInitial)] -               *)
 (*                  AskBalanceInitial                                      *)
 (***************************************************************************)
-MaxPoolBid(erateInitial, erateFinal) ==
-\* AskBalInit / BidBalInit = erateInit[1] / erateInit[2]
-LET a == erateInitial[1]
-    b == erateInitial[2]
-    c == erateInitial[1]
-    d == erateFinal[2]
-IN
+MaxPoolBid(bidBalInit, askBalInit, erateInit, erateFinal) ==
+
+(
+    bidBalInit * erateFinal * erateFinal) \div
     (
         (
-            b * c^2
-        ) \div (
-            2 * c + a
-        )   
-    ) - a
+            (
+                (2 * erateFinal[1]) \div
+                erateFinal[2]
+            ) * erateInit[2] +
+        erateInit[1]
+    ) \div erateInit[2]
+)
+ - askBalInit
+
+=============================================================================
