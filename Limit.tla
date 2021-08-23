@@ -21,7 +21,7 @@ vars == <<accounts, drops, limits, pools, reserve, stops>>
 
 -----------------------------------------------------------------------------
 
-Limit(askCoin, bidCoin)
+Limit(askCoin, bidCoin) ==
 
 LET limitBook == limits[askCoin, bidCoin]
     stopBook  == stops[bidCoin, askCoin]

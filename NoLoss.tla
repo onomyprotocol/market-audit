@@ -20,7 +20,7 @@ vars == <<accounts, drops, limits, pools, reserve, stops>>
 
 -----------------------------------------------------------------------------
 
-NoLoss(acct, askCoin, askAmount, bidCoin, bidAmount)
+NoLoss(askCoin, bidCoin) ==
 \* Getting to this point means that both an Ask Stop and a Bid
 \* Limit are equal and enabled.
 LET limitBook == limits[askCoin, bidCoin]
