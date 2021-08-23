@@ -44,7 +44,7 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 (*                  (2 * exchrateFinal + exchrateInitial)] -               *)
 (*                  AskBalanceInitial                                      *)
 (***************************************************************************)
-MaxPoolBid(erateFinal, erateInitial) ==
+MaxPoolBid(erateInitial, erateFinal) ==
 \* AskBalInit / BidBalInit = erateInit[1] / erateInit[2]
 LET a == erateInitial[1]
     b == erateInitial[2]
