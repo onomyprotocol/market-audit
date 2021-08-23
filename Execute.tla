@@ -1,5 +1,6 @@
 ------------------------------ MODULE Execute ------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt
+EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt,
+            MarketHelpers
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -19,49 +20,8 @@ VARIABLE    accounts,
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
 -----------------------------------------------------------------------------
-\* Nat tuple (numerator/denominator) inequality helper functions
-\* All equalities assume Natural increments
-GT(a, b) == a[1]*b[2] > a[2]*b[1]
-
-GTE(a, b) == a[1]*b[2] >= a[2]*b[1] 
-
-LT(a, b) == a[1]*b[2] < a[2]*b[1]
-
-LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
-
-(***************************************************************************)
-(* Max amount that pool may sell of ask coin without                       *)
-(* executing the most adjacent order                                       *)
-(*                                                                         *)
-(* Differential Invariant:                                                 *)
-(* d(poolAsk) / d(poolBid) = d(erate)                                      *)
-(* d(poolAsk) = d(poolBid) * d(erate)                                      *)
-(*                                                                         *)
-(* Integrate over poolAsk on lhs and poolBid & erate on rhs then           *)
-(* substitute and simplify                                                 *)
-(*                                                                         *)
-(* MaxPoolBid ==    [(BidBalanceInitial * exchrateFinal^2) \               *)
-(*                  (2 * exchrateFinal + exchrateInitial)] -               *)
-(*                  AskBalanceInitial                                      *)
-(***************************************************************************)
-MaxPoolBid(erateInitial, erateFinal) ==
-\* AskBalInit / BidBalInit = erateInit[1] / erateInit[2]
-LET a == erateInitial[1]
-    b == erateInitial[2]
-    c == erateInitial[1]
-    d == erateFinal[2]
-IN
-    (
-        (
-            b * c^2
-        ) \div (
-            2 * c + a
-        )   
-    ) - a
-
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
-    
     stopBook == stopsUpd[bidCoin, askCoin]
     stopHead == Head(stopBook)
     stopHeadInvExchrate == << 
@@ -75,7 +35,6 @@ LET
     
     poolExchrate == pools[bidCoin, askCoin] /
                     pools[askCoin, bidCoin]
-
 IN
     (***************************************************************************)
     (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
@@ -105,7 +64,7 @@ IN
         (*   Action: Execute Ask Stop Order                                    *)
         (***********************************************************************)
         []      LT(askStopHeadInvExchrate, bidLimitHeadExchrate) ->
-            AskStop(askCoin, bidCoin)
+            Stop(askCoin, bidCoin)
     (***************************************************************************)
     (* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
     (*         than Bid Limit Book Exchange Rate                               *)
@@ -113,7 +72,7 @@ IN
     (* Action: Execute Bid Limit Order                                         *)
     (***************************************************************************)      
     []      GT(bidLimitExchrate, poolExchRate) ->  
-        BidLimit(askCoin, bidCoin)      
+        Limit(askCoin, bidCoin)      
 
 =============================================================================
 \* Modification History
