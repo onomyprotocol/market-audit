@@ -17,7 +17,9 @@ VARIABLE    accounts,
             \* Stop Books
             stops
 
-vars == <<accounts, drops, limits, pools, reserve, stops>>
+INSTANCE Stop
+INSTANCE Limit
+INSTANCE NoLoss
 
 -----------------------------------------------------------------------------
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
@@ -25,16 +27,15 @@ LET
     stopBook == stopsUpd[bidCoin, askCoin]
     stopHead == Head(stopBook)
     stopHeadInvExchrate == << 
-        askStopHead.exchrate[2], 
-        askStopHead.exchrate[1] 
+        stopHead.exchrate[2], 
+        stopHead.exchrate[1] 
     >>
     
-    bidLimits == limitsUpd[askCoin, bidCoin]
-    bidLimitHead == Head(bidLimits)
-    bidLimitHeadExchrate == bidLimitHead.exchrate
+    limitBook == limitsUpd[askCoin, bidCoin]
+    limitHead == Head(limitBook)
+    stopHeadExchrate == stopHead.exchrate
     
-    poolExchrate == pools[bidCoin, askCoin] /
-                    pools[askCoin, bidCoin]
+    poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
 IN
     (***************************************************************************)
     (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
@@ -43,7 +44,7 @@ IN
     (*         IF TRUE THEN the Position at the head of the Ask coin Stop Book *)
     (*         is Enabled                                                      *)
     (***************************************************************************)
-    CASE    GTE(poolExchrate, askStopHeadInvExchrate) ->
+    CASE    GTE(poolExchrate, stopHeadInvExchrate) ->
         (***********************************************************************)
         (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
         (*           is equal to exchange rate of the head of the Bid Limit    *)
@@ -51,10 +52,10 @@ IN
         (*                                                                     *)
         (*   Action: Execute no loss trade                                     *)
         (***********************************************************************)
-        CASE    EQ(bidLimitExchrate, askStopInverseExchRate) ->
+        CASE    EQ(limitHead.exchrate, stopHeadInvExchrate) ->
             \* The only parameters needed to execute a no-loss trade is
             \* the ask coin and the bid coin.
-            NoLoss(askCoin, bidCoin)
+            NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
                  
         (***********************************************************************)
         (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
@@ -63,18 +64,18 @@ IN
         (*                                                                     *)
         (*   Action: Execute Ask Stop Order                                    *)
         (***********************************************************************)
-        []      LT(askStopHeadInvExchrate, bidLimitHeadExchrate) ->
-            Stop(askCoin, bidCoin)
+        []      LT(stopHeadInvExchrate, stopHeadExchrate) ->
+            Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
     (***************************************************************************)
     (* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
     (*         than Bid Limit Book Exchange Rate                               *)
     (*                                                                         *)
     (* Action: Execute Bid Limit Order                                         *)
     (***************************************************************************)      
-    []      GT(bidLimitExchrate, poolExchRate) ->  
-        Limit(askCoin, bidCoin)      
+    []      GT(stopHeadExchrate, poolExchrate) ->  
+        Limit(askCoin, bidCoin, limitsUpd, stopsUpd)      
 
 =============================================================================
 \* Modification History
-\* Last modified Fri Aug 20 16:26:16 CDT 2021 by Charles Dusek
+\* Last modified Tue Aug 24 12:29:08 CDT 2021 by Charles Dusek
 \* Created Fri Aug 20 16:24:24 CDT 2021 by Charles Dusek

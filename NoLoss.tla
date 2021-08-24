@@ -1,5 +1,6 @@
 ------------------------------ MODULE NoLoss ------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt
+EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt,
+            MarketHelpers
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -16,11 +17,9 @@ VARIABLE    accounts,
             \* Stop Books
             stops
 
-vars == <<accounts, drops, limits, pools, reserve, stops>>
-
 -----------------------------------------------------------------------------
 
-NoLoss(askCoin, bidCoin) ==
+NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 \* Getting to this point means that both an Ask Stop and a Bid
 \* Limit are equal and enabled.
 LET limitBook == limits[askCoin, bidCoin]
@@ -51,7 +50,7 @@ LET limitBook == limits[askCoin, bidCoin]
             THEN stopBook[2].exchrate
             ELSE limitBook[1].exchrate
     stopHeadBidAmt == 
-        (stopBook[1].amount * strikeExchrate[1]) /div
+        (stopBook[1].amount * strikeExchrate[1]) \div
         strikeExchrate[2]
 IN
     \* IF TRUE then amount traded is equal to limitHead amount
@@ -66,10 +65,10 @@ IN
         IN
             /\  accounts' = 
                 [ accounts EXCEPT 
-                    ![limitBook[1].account, bidCoin] = @ - strikeBidAmount,
-                    ![limitBook[1].account, askCoin] = @ + strikeAskAmount,
-                    ![stopBook[1].account, bidCoin] = @ + strikeBidAmount,
-                    ![stopBook[1].account, askCoin] = @ - strikeAskAmount,
+                    ![limitBook[1].account, bidCoin] = @ - strikeBidAmt,
+                    ![limitBook[1].account, askCoin] = @ + strikeAskAmt,
+                    ![stopBook[1].account, bidCoin] = @ + strikeBidAmt,
+                    ![stopBook[1].account, askCoin] = @ - strikeAskAmt
                 ]
 
             /\  limits' =
@@ -96,10 +95,10 @@ IN
         IN
             /\  accounts' = 
                 [ accounts EXCEPT 
-                    ![limitBook[1].account, bidCoin] = @ - strikeBidAmount,
-                    ![limitBook[1].account, askCoin] = @ + strikeAskAmount,
-                    ![stopBook[1].account, bidCoin] = @ + strikeBidAmount,
-                    ![stopBook[1].account, askCoin] = @ - strikeAskAmount,
+                    ![limitBook[1].account, bidCoin] = @ - strikeBidAmt,
+                    ![limitBook[1].account, askCoin] = @ + strikeAskAmt,
+                    ![stopBook[1].account, bidCoin] = @ + strikeBidAmt,
+                    ![stopBook[1].account, askCoin] = @ - strikeAskAmt
                 ]
 
             /\  limits' =
@@ -118,3 +117,5 @@ IN
                 [ stops EXCEPT 
                     ![bidCoin, askCoin] = Tail(@)
                 ]
+
+=============================================================================

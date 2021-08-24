@@ -17,15 +17,15 @@ VARIABLE    accounts,
             \* Stop Books
             stops
 
-vars == <<accounts, drops, limits, pools, reserve, stops>>
-
 -----------------------------------------------------------------------------
 
-Limit(askCoin, bidCoin) ==
+Limit(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 
-LET limitBook == limits[askCoin, bidCoin]
-    stopBook  == stops[bidCoin, askCoin]
-    poolExchrate == pools[bidCoin, askCoin] /
+LET limitBook == limitsUpd[askCoin, bidCoin]
+    limitHead == Head(limitBook)
+    stopBook  == stopsUpd[bidCoin, askCoin]
+    stopHead == Head(stopBook)
+    poolExchrate == pools[bidCoin, askCoin] \div
                     pools[askCoin, bidCoin]
     strikeExchrate ==
         IF Len(limitBook) > 1
@@ -37,35 +37,35 @@ LET limitBook == limits[askCoin, bidCoin]
                 IF LTE(
                         limitBook[2].exchrate,
                         <<
-                            stopBook[1].exchrate[2],
-                            stopBook[1].exchrate[1]
+                            stopHead.exchrate[2],
+                            stopHead.exchrate[1]
                         >>
                     )
                 THEN limitBook[2].exchrate
                 ELSE <<
-                        stopBook[1].exchrate[2],
-                        stopBook[1].exchrate[1]
+                        stopHead.exchrate[2],
+                        stopHead.exchrate[1]
                     >>
-            ELSE limitBook[2].exchrate
+            ELSE << stopBook[2].exchrate[2], stopBook[2].exchrate[1] >>
         ELSE 
             IF Len(stopBook) > 0
             THEN <<
-                stopBook[1].exchrate[2],
-                stopBook[1].exchrate[1]
+                stopHead.exchrate[2],
+                stopHead.exchrate[1]
             >>
-            ELSE limitBook[1].exchrate
-            
+            ELSE limitHead.exchrate
+    maxPoolAmt == MaxPoolBid(pools[bidCoin, askCoin], pools[askCoin, bidCoin], strikeExchrate)
 IN
-    IF limitBook[1]amount <= stopBook[1].amount
+    IF limitHead.amount <= maxPoolAmt
     THEN \* Fulfill entire limit order
-        LET strikeBidAmt == limitBook[1].amount
+        LET strikeBidAmt == limitHead.amount
             strikeAskAmt == 
                 (
                     strikeBidAmt *
                     strikeExchrate[1]
-                ) * strikeExchrate[2]
+                ) \div strikeExchrate[2]
         IN
-            /\  limits' = [limits EXCEPT ![askCoin, bidCoin] = Tail(@)]
+            /\  limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
             /\  accounts' = 
                 [ accounts EXCEPT 
                     ![limitBook[1].acct, bidCoin] = @ - strikeBidAmt,
@@ -77,17 +77,21 @@ IN
                     ![bidCoin, askCoin] = @ - strikeAskAmt 
                 ]
     ELSE \* Partial fill limit order
-        LET strikeBidAmt == maxPoolAmt
+        LET strikeBidAmt == MaxPoolBid(
+                pools[bidCoin, askCoin], 
+                pools[askCoin, bidCoin],
+                strikeExchrate
+            )
             strikeAskAmt == 
                 (
                     strikeBidAmt *
                     strikeExchrate[1]
                 ) * strikeExchrate[2]
         IN
-        /\  limits' = [limits EXCEPT ![askCoin, bidCoin] = 
+        /\  limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
                 Append(
                     Tail(@), <<[
-                        account: limitBook[1].accounts,
+                        account: limitBook[1].account,
                         exchrate: limitBook[1].exchrate,
                         amount: limitBook[1].amount - strikeBidAmt
                     ]>>
@@ -95,11 +99,13 @@ IN
             ]
         /\  accounts' = 
             [ accounts EXCEPT 
-                ![acct, bidCoin] = @ - strikeBidAmt,
-                ![acct, askCoin] = @ + strikeAskAmt
+                ![limitBook[1].account, bidCoin] = @ - strikeBidAmt,
+                ![limitBook[1].account, askCoin] = @ + strikeAskAmt
             ] 
         /\  pools' = 
             [ pools EXCEPT
                 ![askCoin, bidCoin] = @ + strikeBidAmt,
                 ![bidCoin, askCoin] = @ - strikeAskAmt 
             ]
+
+=============================================================================
