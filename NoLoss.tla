@@ -1,5 +1,5 @@
 ------------------------------ MODULE NoLoss ------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt,
+EXTENDS     FiniteSets, FiniteSetsExt, Integers, Sequences, SequencesExt,
             MarketHelpers
 
 CONSTANT    ExchAccount,    \* Set of all accounts

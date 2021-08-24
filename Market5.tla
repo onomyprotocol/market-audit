@@ -92,8 +92,6 @@ Deposit(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
 
-SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
-
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
 Withdraw(acct, amount, coinType) ==

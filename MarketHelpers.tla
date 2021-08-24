@@ -1,5 +1,5 @@
 --------------------------- MODULE MarketHelpers ---------------------------
-EXTENDS Integers
+EXTENDS Integers, Sequences, SequencesExt
 \* Nat tuple (numerator/denominator) inequality helper functions
 \* All equalities assume Natural increments
 EQ(a, b) == a[1]*b[2] = a[2]*b[1]
@@ -36,10 +36,12 @@ MaxPoolBid(askBalInit, bidBalInit, erateFinal) ==
             (
                 (2 * erateFinal[1]) \div
                 erateFinal[2]
-            ) * bidBalInit[2] +
-        askBalInit[1]
-    ) \div askBalInit[2]
+            ) * bidBalInit +
+        askBalInit
+    ) \div bidBalInit
 )
  - askBalInit
+
+SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
 
 =============================================================================
