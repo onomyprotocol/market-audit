@@ -1,5 +1,5 @@
 --------------------------- MODULE MarketHelpers ---------------------------
-EXTENDS Integers, Sequences, SequencesExt
+EXTENDS Integers, Sequences, SequencesExt, FiniteSets
 \* Nat tuple (numerator/denominator) inequality helper functions
 \* All equalities assume Natural increments
 EQ(a, b) == a[1]*b[2] = a[2]*b[1]
@@ -42,6 +42,34 @@ MaxPoolBid(askBalInit, bidBalInit, erateFinal) ==
 )
  - askBalInit
 
+\* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
+\* all of the position amounts. Returns 0 if seq is empty.
+SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
+
 SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
 
+TruncateAcctSeq(acct, bal, askCoin, bidCoin, limits, stops) ==
+LET limitBook == limits[askCoin, bidCoin]
+    stopBook == stops[bidCoin, askCoin]
+IN
+    LET F[i \in 0 .. Len(stopBook)] ==
+        LET G[j \in 0 .. Len(limitBook)] ==
+            IF SumSeqPos(SelectAcctSeq(acct, F[i])) +
+                SumSeqPos(SelectAcctSeq(acct, G[i])) <=
+                bal 
+            THEN    << stopBook, limitBook >>
+            ELSE
+                IF  SumSeqPos(SelectAcctSeq(acct, F[i-1])) +
+                    SumSeqPos(SelectAcctSeq(acct, G[i])) <=
+                    bal
+                THEN    <<F[i-1], G[i]>> 
+                ELSE
+                    IF  SumSeqPos(SelectAcctSeq(acct, F[i])) +
+                        SumSeqPos(SelectAcctSeq(acct, G[i-1])) <=
+                        bal
+                    THEN    <<F[i], G[i-1]>>
+                    ELSE    <<F[i-1], G[i-1]>>
+        IN  G[Len(limitBook)]
+    IN  F[Len(stopBook)]
+                    
 =============================================================================

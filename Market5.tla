@@ -22,9 +22,7 @@ vars == <<accounts, drops, limits, pools, reserve, stops>>
 INSTANCE Execute
 
 -----------------------------------------------------------------------------
-\* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
-\* all of the position amounts. Returns 0 if seq is empty.
-SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
+
 
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 PositionInv( limitsSeq, stopsSeq, balance ) ==
