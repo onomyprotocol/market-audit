@@ -23,11 +23,6 @@ INSTANCE Execute
 
 -----------------------------------------------------------------------------
 
-
-\* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
-PositionInv( limitsSeq, stopsSeq, balance ) ==
-    SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
-
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
 

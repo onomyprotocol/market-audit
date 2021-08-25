@@ -71,5 +71,30 @@ IN
                     ELSE    <<F[i-1], G[i-1]>>
         IN  G[Len(limitBook)]
     IN  F[Len(stopBook)]
-                    
+
+\* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
+PositionInv( limitsSeq, stopsSeq, balance ) ==
+    SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
+
+
+TruncatePositions( limitsSeq, stopsSeq, balance ) == 
+    \* we use CHOOSE to get one pair, but the cutoff pair is not necessarily unique:
+    \* consider: balance = 1, limtsSeq (amounts) = << 1,1 >>, stopsSeq (amounts) = << 1, 1 >>
+    \* Truncation returns either << <<>>, <<1>> >> or << <<1>>, <<>> >>
+    \* It is up to the implementation to define a deterministic way of resolving 
+    \* cases with multiple solutions. 
+    \* For example, the implementation could prefer to truncate limits over stops whenever possible
+    LET cutoffs == CHOOSE pair \in (DOMAIN limitsSeq \union {0}) \X (DOMAIN stopsSeq \union {0}):
+        LET i == pair[1]
+            j == pair[2] 
+        IN 
+        /\ PositionInv( SubSeq(limitsSeq, 1, i) , SubSeq(stopsSeq, 1, j), balance )
+        /\ i < Len(limitsSeq) => 
+            ~PositionInv( SubSeq(limitsSeq, 1, i+1) , SubSeq(stopsSeq, 1, j), balance ) 
+        /\ j < Len(stopsSeq) =>
+            ~PositionInv( SubSeq(limitsSeq, 1, i) , SubSeq(stopsSeq, 1, j +1 ), balance ) 
+    IN << 
+        SubSeq(limitsSeq, 1, cutoffs[1]), 
+        SubSeq(stopsSeq, 1, cutoffs[2])
+        >>
 =============================================================================
