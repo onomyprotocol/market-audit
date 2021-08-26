@@ -1,5 +1,5 @@
 ------------------------------- MODULE Market3 -------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt
+EXTENDS     FiniteSets, FiniteSetsExt, Functions, Naturals, Sequences, SequencesExt
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -101,6 +101,19 @@ Deposit(acct, amount, coinType) ==
 
 SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
 
+\* Given an account and a coin,
+\* sum up over all positions that are open for the coin and the account.
+SumForAccountAndCoin(acct, coin) ==
+    LET Pairs == {p \in PairType : p[2] = coin} IN
+    \* Map every pair in Pairs to the sum of positions for that pair.
+    \* Note that we cannot construct a set directly,
+    \* as otherwise we would lose duplicate numbers.
+    LET Sums == [ p \in Pairs |->
+        SumSeqPos(SelectAcctSeq(acct, limits[p])) +
+        SumSeqPos(SelectAcctSeq(acct, stops[p])) ]
+    IN
+    FoldFunction(LAMBDA i, j: i + j, 0, Sums)
+
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
 Withdraw(acct, amount, coinType) ==
@@ -109,12 +122,7 @@ Withdraw(acct, amount, coinType) ==
     /\  amount <= accounts[acct, coinType]
     \* Precondition: the post-withdrawal balance still covers open positions
     \* It is up to the user to select and close positions before withdrawal
-    /\  newBalance >= 
-        Sum({ 
-            SumSeqPos(SelectAcctSeq(acct, limits[pair])) +
-            SumSeqPos(SelectAcctSeq(acct, stops[pair])) :
-            pair \in {p \in PairType : p[2] = coinType}
-        })
+    /\  newBalance >= SumForAccountAndCoin(acct, coinType)
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ - amount]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
@@ -125,12 +133,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
     \* total amounts in all positions for all pairs with the Bid Coin. 
-    /\ balance >= 
-        Sum({ 
-            SumSeqPos(SelectAcctSeq(acct, limits[pair])) +
-            SumSeqPos(SelectAcctSeq(acct, stops[pair])) :
-            pair \in {p \in PairType : p[2] = bidCoin}
-        })
+    /\ balance >= SumForAccountAndCoin(acct, bidCoin)
     /\  LET seqOfPos == IF limitOrStop = "limit" THEN limitBook ELSE stopBook IN
         /\  IF limitOrStop = "limit"
             THEN
@@ -372,11 +375,7 @@ PosSeqLengthBoundInv ==
 PositionsAreProvisionedInv == 
     \A acct \in ExchAccount:
     \A coin \in CoinType:
-    Sum({ 
-        SumSeqPos(SelectAcctSeq(acct, limits[pair])) +
-        SumSeqPos(SelectAcctSeq(acct, stops[pair])) :
-        pair \in {pair \in PairType : pair[2] = coin}
-    }) <= accounts[acct, coin]
+    SumForAccountAndCoin(acct, coin) <= accounts[acct, coin]
 
 
 Inv ==
