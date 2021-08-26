@@ -34,8 +34,8 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
 
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
-PositionInv( limitsSeq, stopsSeq, balance ) ==
-    SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
+\* PositionInv( limitsSeq, stopsSeq, balance ) ==
+\*     SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
 
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
