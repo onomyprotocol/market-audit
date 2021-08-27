@@ -133,7 +133,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
     \* total amounts in all positions for all pairs with the Bid Coin. 
-    /\ balance >= SumForAccountAndCoin(acct, bidCoin)
+    /\ balance >= pos.amount + SumForAccountAndCoin(acct, bidCoin)
     /\  LET seqOfPos == IF limitOrStop = "limit" THEN limitBook ELSE stopBook IN
         /\  IF limitOrStop = "limit"
             THEN
