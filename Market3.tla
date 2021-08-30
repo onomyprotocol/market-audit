@@ -128,7 +128,9 @@ Withdraw(acct, amount, coinType) ==
     /\  UNCHANGED << drops, limits, pools, stops >>
 
 Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
-    LET limitBook == limits[askCoin, bidCoin]
+\*  In order to open a position, pool must not be empty
+/\  pools[askCoin, bidCoin] > 0
+/\  LET limitBook == limits[askCoin, bidCoin]
         stopBook == stops[askCoin, bidCoin]
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
