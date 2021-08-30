@@ -1,6 +1,6 @@
 ------------------------------- MODULE Market5 -------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Integers, Sequences, SequencesExt,
-            MarketHelpers
+EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt,
+            MarketHelpers, Functions
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -19,9 +19,12 @@ VARIABLE    accounts,
 
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
-INSTANCE Execute
-
 -----------------------------------------------------------------------------
+
+
+\* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
+\* PositionInv( limitsSeq, stopsSeq, balance ) ==
+\*     SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
 
 \* Three Coin Types. Two Denoms and NOM
 CoinType == {"Denom_A", "Denom_B", "NOM"}
@@ -85,6 +88,19 @@ Deposit(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
 
+\* Given an account and a coin,
+\* sum up over all positions that are open for the coin and the account.
+SumForAccountAndCoin(acct, coin) ==
+    LET Pairs == {p \in PairType : p[2] = coin} IN
+    \* Map every pair in Pairs to the sum of positions for that pair.
+    \* Note that we cannot construct a set directly,
+    \* as otherwise we would lose duplicate numbers.
+    LET Sums == [ p \in Pairs |->
+        SumSeqPos(SelectAcctSeq(acct, limits[p])) +
+        SumSeqPos(SelectAcctSeq(acct, stops[p])) ]
+    IN
+    FoldFunction(LAMBDA i, j: i + j, 0, Sums)
+
 \* Does not automatically update positions. It requires problematic positions
 \* to already be closed (externally), before balances are changed
 Withdraw(acct, amount, coinType) ==
@@ -93,12 +109,7 @@ Withdraw(acct, amount, coinType) ==
     /\  amount <= accounts[acct, coinType]
     \* Precondition: the post-withdrawal balance still covers open positions
     \* It is up to the user to select and close positions before withdrawal
-    /\  \A askCoin \in CoinType \ {coinType}:
-        PositionInv( 
-            SelectAcctSeq(acct, limits[askCoin, coinType]),
-            SelectAcctSeq(acct, stops[askCoin, coinType]),
-            newBalance
-            )
+    /\  newBalance >= SumForAccountAndCoin(acct, coinType)
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ - amount]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
@@ -108,11 +119,8 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
         stopBook == stops[askCoin, bidCoin]
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
-    \* total amounts in all positions for any particular pair with the Bid 
-    \* Coin. 
-    /\ balance >=   pos.amount + 
-                    SumSeqPos(SelectAcctSeq(acct, limitBook)) + 
-                    SumSeqPos(SelectAcctSeq(acct, stopBook))
+    \* total amounts in all positions for all pairs with the Bid Coin. 
+    /\ balance >= pos.amount + SumForAccountAndCoin(acct, bidCoin)
     /\  LET seqOfPos == IF limitOrStop = "limit" THEN limitBook ELSE stopBook IN
         /\  IF limitOrStop = "limit"
             THEN
@@ -337,17 +345,25 @@ PosSeqLengthBoundInv ==
         IN 
         /\ BoundedLen( limits[pair] )
         /\ BoundedLen( stops[pair] )
-        
+\*        
+\* One of the critical system invariants: For every account `acct` and pair of coins `pair`,
+\* the account balance for the bidCoin covers all open positions for `pair` associated with `acct`  
+\* PositionsAreProvisionedInv == 
+\*     \A acct \in ExchAccount:
+\*     \A pair \in PairType:
+\*         PositionInv( 
+\*             SelectAcctSeq(acct, limits[pair]), 
+\*            SelectAcctSeq(acct, stops[pair]), 
+\*             accounts[acct, pair[2]] 
+\*         )
+
 \* One of the critical system invariants: For every account `acct` and pair of coins `pair`,
 \* the account balance for the bidCoin covers all open positions for `pair` associated with `acct`  
 PositionsAreProvisionedInv == 
     \A acct \in ExchAccount:
-    \A pair \in PairType:
-        PositionInv( 
-            SelectAcctSeq(acct, limits[pair]), 
-            SelectAcctSeq(acct, stops[pair]), 
-            accounts[acct, pair[2]] 
-        )
+    \A coin \in CoinType:
+    SumForAccountAndCoin(acct, coin) <= accounts[acct, coin]
+
 
 Inv ==
     /\ TypeInvariant
