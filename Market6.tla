@@ -1,5 +1,6 @@
-------------------------------- MODULE Market3 -------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Functions, Naturals, Sequences, SequencesExt
+------------------------------- MODULE Market6 -------------------------------
+EXTENDS     FiniteSets, FiniteSetsExt, Functions, MarketHelpers, Naturals, 
+            Sequences, SequencesExt
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -19,19 +20,7 @@ VARIABLE    accounts,
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
 -----------------------------------------------------------------------------
-\* Nat tuple (numerator/denominator) inequality helper functions
-\* All equalities assume Natural increments
-GT(a, b) == a[1]*b[2] > a[2]*b[1]
 
-GTE(a, b) == a[1]*b[2] >= a[2]*b[1] 
-
-LT(a, b) == a[1]*b[2] < a[2]*b[1]
-
-LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
-
-\* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
-\* all of the position amounts. Returns 0 if seq is empty.
-SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
 
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 \* PositionInv( limitsSeq, stopsSeq, balance ) ==
@@ -51,7 +40,7 @@ PairSetTypePre == {{a, b} : a \in CoinType, b \in CoinType}
 PairSetType == { pst \in PairSetTypePre : Cardinality(pst) > 1 }
 
 
-ExchRateType == {<<a, b>> : a \in PositiveAmounts, b \in PositiveAmounts}
+ExchRateType == {<<a, b>> : a \in Amounts, b \in PositiveAmounts}
 
 PositionType == 
 [
@@ -98,8 +87,6 @@ Deposit(acct, amount, coinType) ==
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ + amount]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
-
-SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
 
 \* Given an account and a coin,
 \* sum up over all positions that are open for the coin and the account.
@@ -186,33 +173,15 @@ Close(acct, askCoin, bidCoin, limitOrStop, i) ==
             /\ UNCHANGED limits
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
-Provision(acct, aCoin, bCoin, aCoinAmt, bCoinAmt, dropAmt) ==
+Provision(acct, aCoin, bCoin, dropAmt) ==
     LET PlusDrops(account, p) == p + drops[account,{aCoin,bCoin}]
         dropsTotal == FoldSet(PlusDrops, 0, ExchAccount)
     IN  IF dropsTotal = 0
-        THEN 
-            /\  accounts[acct, aCoin] >= aCoinAmt
-            /\  accounts[acct, bCoin] >= bCoinAmt
-            /\  pools' = [ pools EXCEPT
-                        ![aCoin, bCoin] = @ + bCoinAmt,
-                        ![bCoin, aCoin] = @ + aCoinAmt
-                    ]
-                /\  drops' = [ drops EXCEPT 
-                        ![acct, {aCoin, bCoin}] = @ + dropAmt 
-                    ]
-                /\  accounts' = [ accounts EXCEPT
-                        ![acct, aCoin] = @ - aCoinAmt,
-                        ![acct, bCoin] = @ - bCoinAmt
-                    ]
-                /\ UNCHANGED << limits, stops, reserve >>
-                
-        ELSE
-            LET ratio == dropAmt \div dropsTotal
-                    aCoinAmtPool == ratio * pools[bCoin, aCoin]
-                    bCoinAmtPool == ratio * pools[aCoin, bCoin]
+        THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
+        ELSE    LET ratio == dropAmt \div dropsTotal
+                    aCoinAmt == ratio * pools[bCoin, aCoin]
+                    bCoinAmt == ratio * pools[aCoin, bCoin]
                 IN 
-                    /\  aCoinAmt = aCoinAmtPool
-                    /\  bCoinAmt = bCoinAmtPool
                     /\  accounts[acct, aCoin] >= aCoinAmt
                     /\  accounts[acct, bCoin] >= bCoinAmt
                     /\  pools' = [ pools EXCEPT
@@ -234,7 +203,7 @@ Liquidate(acct, aCoin, bCoin, dropAmt) ==
     IN  IF dropsTotal = 0
         THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
         ELSE    LET ratio == dropAmt \div dropsTotal
-                    aCoinAmt == accounts[acct, aCoin]
+                    aCoinAmt == ratio * accounts[acct, aCoin]
                     bCoinAmt == ratio * accounts[acct, bCoin]
                 IN 
                     /\  pools[bCoin,aCoin] >= aCoinAmt
@@ -279,11 +248,9 @@ NEXT ==
                 IN 
                 \E i \in DOMAIN seq:
                     Close(acct, askCoin, bidCoin, limitOrStop, i)
-            \/  \E  dropAmt \in PositiveAmounts :
-                \E  aCoinAmt \in PositiveAmounts:
-                \E  bCoinAmt \in PositiveAmounts :
-                    \/ Liquidate(acct, askCoin, bidCoin, dropAmt)
-                    \/ Provision(acct, askCoin, bidCoin, aCoinAmt, bCoinAmt, dropAmt)
+            \/  \E  poolAmount \in PositiveAmounts :
+                \/  Liquidate(acct, askCoin, bidCoin, poolAmount)
+                \/  Provision(acct, askCoin, bidCoin, poolAmount)
 
 Spec == INIT /\ [][NEXT]_vars
 
