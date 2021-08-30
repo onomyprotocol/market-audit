@@ -19,6 +19,8 @@ VARIABLE    accounts,
 
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
+INSTANCE Execute
+
 -----------------------------------------------------------------------------
 
 
@@ -132,10 +134,12 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < igte
                     THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ limits' = [ limits EXCEPT ![askCoin, bidCoin] =
+                  /\ LET limitsUpd == [ limits EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
-                     ] 
+                     ]
+                     IN 
+                     /\ Execute(askCoin, bidCoin, limitsUpd, stops)
                 /\ UNCHANGED << drops, pools, stops >>
             \* ELSE type is stops
             ELSE
@@ -147,10 +151,11 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ stops' = [ stops EXCEPT ![askCoin, bidCoin] =
+                  /\ LET stopsUpd == [ stops EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
-                    ] 
+                     ] IN
+                     /\ Execute(askCoin, bidCoin, limits, stopsUpd) 
                 /\  UNCHANGED << drops, limits, pools >>
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
