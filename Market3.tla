@@ -66,7 +66,7 @@ TypeInvariant ==
 \* accounts[ <<acct, coin>> ] is the balance of `coin` in account `acct`
 /\  accounts \in [ExchAccount \X CoinType -> Amounts]
 \*  drops[ acct \X {coin, coin} ] is a balance of liquidity drop token
-/\  drops \in [ExchAccount \X PairSetType -> Amounts] 
+/\  drops \in [ExchAccount \X PairSetType -> Nat] 
 \* limits[ <<askCoin, bidCoin>> ] is a sequence of positions for that ask/bid pair
 /\  limits \in [PairType -> Seq(PositionType)]
 \*  pools[ pair ] is a balance of liquidity within a pool tied to a pair <<a, b>> where balance is b coin
