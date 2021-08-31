@@ -191,8 +191,8 @@ Provision(acct, aCoin, bCoin, aCoinAmt, bCoinAmt, dropAmt) ==
         dropsTotal == FoldSet(PlusDrops, 0, ExchAccount)
     IN  IF dropsTotal = 0
         THEN 
-            /\  accounts[acct, aCoin] >= aCoinAmt
-            /\  accounts[acct, bCoin] >= bCoinAmt
+            /\  accounts[acct, aCoin] >= aCoinAmt + SumForAccountAndCoin(acct, aCoin)
+            /\  accounts[acct, bCoin] >= bCoinAmt + SumForAccountAndCoin(acct, bCoin)
             /\  pools' = [ pools EXCEPT
                         ![aCoin, bCoin] = @ + bCoinAmt,
                         ![bCoin, aCoin] = @ + aCoinAmt
@@ -207,48 +207,48 @@ Provision(acct, aCoin, bCoin, aCoinAmt, bCoinAmt, dropAmt) ==
                 /\ UNCHANGED << limits, stops, reserve >>
                 
         ELSE
-            LET ratio == dropAmt \div dropsTotal
-                    aCoinAmtPool == ratio * pools[bCoin, aCoin]
-                    bCoinAmtPool == ratio * pools[aCoin, bCoin]
-                IN 
-                    /\  aCoinAmt = aCoinAmtPool
-                    /\  bCoinAmt = bCoinAmtPool
-                    /\  accounts[acct, aCoin] >= aCoinAmt
-                    /\  accounts[acct, bCoin] >= bCoinAmt
-                    /\  pools' = [ pools EXCEPT
-                            ![aCoin, bCoin] = @ + bCoinAmt,
-                            ![bCoin, aCoin] = @ + aCoinAmt
-                        ]
-                    /\  drops' = [ drops EXCEPT 
-                            ![acct, {aCoin, bCoin}] = @ + dropAmt 
-                        ]
-                    /\  accounts' = [ accounts EXCEPT
-                            ![acct, aCoin] = @ - aCoinAmt,
-                            ![acct, bCoin] = @ - bCoinAmt
-                        ]
-                    /\ UNCHANGED << limits, stops, reserve >>
+            LET aCoinAmtPool == (dropAmt * pools[bCoin, aCoin]) \div dropsTotal
+                bCoinAmtPool == (dropAmt * pools[aCoin, bCoin]) \div dropsTotal
+            IN 
+                /\  aCoinAmt = aCoinAmtPool
+                /\  bCoinAmt = bCoinAmtPool
+                /\  accounts[acct, aCoin] >= aCoinAmt + SumForAccountAndCoin(acct, aCoin)
+                /\  accounts[acct, bCoin] >= bCoinAmt + SumForAccountAndCoin(acct, bCoin)
+                /\  pools' = [ pools EXCEPT
+                        ![aCoin, bCoin] = @ + bCoinAmt,
+                        ![bCoin, aCoin] = @ + aCoinAmt
+                    ]
+                /\  drops' = [ drops EXCEPT 
+                        ![acct, {aCoin, bCoin}] = @ + dropAmt 
+                    ]
+                /\  accounts' = [ accounts EXCEPT
+                        ![acct, aCoin] = @ - aCoinAmt,
+                        ![acct, bCoin] = @ - bCoinAmt
+                    ]
+                /\ UNCHANGED << limits, stops, reserve >>
 
-Liquidate(acct, aCoin, bCoin, dropAmt) ==
-    LET PlusDrops(account, p) == p + drops[account,{aCoin,bCoin}]
+Liquidate(acct, aCoin, bCoin, aCoinAmt, bCoinAmt, dropAmt) ==
+/\  drops[acct, {aCoin, bCoin}] >= dropAmt
+/\  LET PlusDrops(account, p) == p + drops[account,{aCoin,bCoin}]
         dropsTotal == FoldSet(PlusDrops, 0, ExchAccount)
     IN  IF dropsTotal = 0
         THEN    UNCHANGED <<accounts, drops, limits, pools, reserve, stops>>
-        ELSE    LET ratio == dropAmt \div dropsTotal
-                    aCoinAmt == accounts[acct, aCoin]
-                    bCoinAmt == ratio * accounts[acct, bCoin]
+        ELSE    LET aCoinAmtPool == (dropAmt * pools[bCoin, aCoin]) \div dropsTotal
+                    bCoinAmtPool == (dropAmt * pools[aCoin, bCoin]) \div dropsTotal
                 IN 
+                    /\  aCoinAmt = aCoinAmtPool
+                    /\  bCoinAmt = bCoinAmtPool
                     /\  pools[bCoin,aCoin] >= aCoinAmt
                     /\  pools[aCoin,bCoin] >= bCoinAmt
+                    /\  drops[acct, {aCoin, bCoin}] >= dropAmt
                     /\  accounts' = [ accounts EXCEPT
                             ![acct, aCoin] = @ + aCoinAmt,
                             ![acct, bCoin] = @ + bCoinAmt
                         ]
-                    /\  pools' = [ pools EXCEPT 
-                            \* 
-                            ![aCoin, bCoin] = @ - aCoinAmt,
-                            ![bCoin, aCoin] = @ - bCoinAmt
+                    /\  pools' = [ pools EXCEPT
+                            ![bCoin, aCoin] = @ - aCoinAmt,
+                            ![aCoin, bCoin] = @ - bCoinAmt
                         ]
-                    
                     /\ drops' = [ drops EXCEPT 
                         ![acct, {aCoin, bCoin}] = @ - dropAmt ]
                     /\ UNCHANGED << limits, stops, reserve >>
@@ -282,7 +282,7 @@ NEXT ==
             \/  \E  dropAmt \in PositiveAmounts :
                 \E  aCoinAmt \in PositiveAmounts:
                 \E  bCoinAmt \in PositiveAmounts :
-                    \/ Liquidate(acct, askCoin, bidCoin, dropAmt)
+                    \/ Liquidate(acct, askCoin, bidCoin, aCoinAmt, bCoinAmt, dropAmt)
                     \/ Provision(acct, askCoin, bidCoin, aCoinAmt, bCoinAmt, dropAmt)
 
 Spec == INIT /\ [][NEXT]_vars
