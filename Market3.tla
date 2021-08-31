@@ -169,19 +169,16 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                 /\  UNCHANGED << drops, limits, pools >>
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
-Close(acct, askCoin, bidCoin, limitOrStop, i) ==
-    LET seqOfPos == IF limitOrStop = "limit" 
-                    THEN limits[askCoin, bidCoin] 
-                    ELSE stops[askCoin, bidCoin] 
-        pos == seqOfPos[i] 
-    IN 
+Close(acct, askCoin, bidCoin, limitOrStop, pos) == 
     /\  pos.account = acct \* you can only close your own acct's positions
     /\  IF limitOrStop = "limit"
         THEN
+            /\ Contains(limits[askCoin, bidCoin], pos)
             \* Remove removes all copies, what if there are multiple equivalent positions?
             /\ limits' = [limits EXCEPT ![askCoin, bidCoin] = Remove(@, pos)]
             /\ UNCHANGED << drops, pools, stops >>
         ELSE
+            /\ Contains(stops[askCoin, bidCoin], pos)
             /\ stops' = [stops EXCEPT ![askCoin, bidCoin] = Remove(@, pos)]
             /\ UNCHANGED limits
     /\ UNCHANGED << accounts, drops, pools, reserve >>
@@ -265,20 +262,20 @@ NEXT ==
             \E  bidCoin \in CoinType \ {askCoin} :
             \/  \E  exchrate \in ExchRateType:
                 \E  bidAmount \in PositiveAmounts :
-                    Open(acct, askCoin, bidCoin, limitOrStop, [
-                        account |-> acct,
-                        \* Exchange Rate is defined as
-                        \* exchrate[1] / exchrate[2]
-                        exchrate |-> exchrate,
-                        amount |-> bidAmount
-                      ])
-                \*  Close
-            \/  LET seq == IF limitOrStop = "limit"
-                           THEN limits[askCoin, bidCoin]
-                           ELSE stops[askCoin, bidCoin]
-                IN 
-                \E i \in DOMAIN seq:
-                    Close(acct, askCoin, bidCoin, limitOrStop, i)
+                    \/  Open(acct, askCoin, bidCoin, limitOrStop, [
+                            account |-> acct,
+                            \* Exchange Rate is defined as
+                            \* exchrate[1] / exchrate[2]
+                            exchrate |-> exchrate,
+                            amount |-> bidAmount
+                        ])
+                    
+                    \/  Close(acct, askCoin, bidCoin, limitOrStop, [
+                            account |-> acct,
+                            exchrate |-> exchrate,                            
+                            amount |-> bidAmount
+                        ])
+                    
             \/  \E  dropAmt \in PositiveAmounts :
                 \E  aCoinAmt \in PositiveAmounts:
                 \E  bCoinAmt \in PositiveAmounts :
@@ -319,7 +316,7 @@ Spec == INIT /\ [][NEXT]_vars
     )
 
 *)
-
+(*
 \* Simpler constraint, only over two consecutive states
 AMMPropertyLite == 
     [][
@@ -339,7 +336,7 @@ AMMPropertyLite ==
             /\ balanceBA(pools') >= balanceBA(pools)
         )
     ]_<<drops,pools>>
-
+*)
 
 \* For each coin, the amount in the system is constant
 CoinAmountInv == 
