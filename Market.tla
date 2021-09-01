@@ -112,10 +112,11 @@ Withdraw(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
 
-Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
+Open(askCoin, bidCoin, limitOrStop, pos) ==
 \*  In order to open a position, pool must not be empty
 /\  pools[askCoin, bidCoin] > 0
-/\  LET limitBook == limits[askCoin, bidCoin]
+/\  LET acct == pos.account
+        limitBook == limits[askCoin, bidCoin]
         stopBook == stops[askCoin, bidCoin]
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
@@ -154,8 +155,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                 /\  UNCHANGED << drops, limits, pools >>
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
-Close(acct, askCoin, bidCoin, limitOrStop, pos) == 
-    /\  pos.account = acct \* you can only close your own acct's positions
+Close(askCoin, bidCoin, limitOrStop, pos) == 
     /\  IF limitOrStop = "limit"
         THEN
             /\ Contains(limits[askCoin, bidCoin], pos)
@@ -247,7 +247,7 @@ NEXT ==
             \E  bidCoin \in CoinType \ {askCoin} :
             \/  \E  exchrate \in ExchRateType:
                 \E  bidAmount \in PositiveAmounts :
-                    \/  Open(acct, askCoin, bidCoin, limitOrStop, [
+                    \/  Open(askCoin, bidCoin, limitOrStop, [
                             account |-> acct,
                             \* Exchange Rate is defined as
                             \* exchrate[1] / exchrate[2]
@@ -255,7 +255,7 @@ NEXT ==
                             amount |-> bidAmount
                         ])
                     
-                    \/  Close(acct, askCoin, bidCoin, limitOrStop, [
+                    \/  Close(askCoin, bidCoin, limitOrStop, [
                             account |-> acct,
                             exchrate |-> exchrate,                            
                             amount |-> bidAmount
