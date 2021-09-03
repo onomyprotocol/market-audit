@@ -1,5 +1,6 @@
 ------------------------------- MODULE Market -------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Functions, Naturals, Sequences, SequencesExt
+EXTENDS     FiniteSets, FiniteSetsExt, Functions, Naturals, Sequences, 
+            SequencesExt, MarketHelpers
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -19,20 +20,6 @@ VARIABLE    accounts,
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
 -----------------------------------------------------------------------------
-\* Nat tuple (numerator/denominator) inequality helper functions
-\* All equalities assume Natural increments
-GT(a, b) == a[1]*b[2] > a[2]*b[1]
-
-GTE(a, b) == a[1]*b[2] >= a[2]*b[1] 
-
-LT(a, b) == a[1]*b[2] < a[2]*b[1]
-
-LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
-
-\* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
-\* all of the position amounts. Returns 0 if seq is empty.
-SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
-
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 \* PositionInv( limitsSeq, stopsSeq, balance ) ==
 \*     SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
@@ -98,8 +85,6 @@ Deposit(acct, amount, coinType) ==
     /\  accounts' = [accounts EXCEPT ![acct, coinType] = @ + amount]
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
-
-SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
 
 \* Given an account and a coin,
 \* sum up over all positions that are open for the coin and the account.
