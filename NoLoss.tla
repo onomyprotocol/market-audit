@@ -26,10 +26,11 @@ LET limitBook == limits[askCoin, bidCoin]
     stopBook  == stops[bidCoin, askCoin]
     \* Strike Exchrate either limit or stop as equal
     strikeExchrate ==
-        IF Len(limitBook) > 1
-        THEN 
-            IF Len(stopBook) > 1
-            THEN 
+        CASE Len(limitBook) = 1 /\ Len(stopBook) = 1 ->
+                Head(limitBook).exchrate
+        []   Len(limitBook) > 1 /\ Len(stopBook) = 1 ->
+                Head(limitBook).exchrate
+        []   Len(limitBook) > 1 /\ Len(stopBook) > 1 ->
                 \* Strike price is based on the most adjacent
                 \* order based on price.
                 IF LTE(
@@ -44,19 +45,18 @@ LET limitBook == limits[askCoin, bidCoin]
                         stopBook[2].exchrate[2],
                         stopBook[2].exchrate[1]
                     >>
-            ELSE limitBook[2].exchrate
-        ELSE
-            IF Len(stopBook) > 1
-            THEN stopBook[2].exchrate
-            ELSE limitBook[1].exchrate
     stopHeadBidAmt == 
         (stopBook[1].amount * strikeExchrate[1]) \div
         strikeExchrate[2]
+    strikeBidAmt ==
+        IF limitBook[1].amount <= stopHeadBidAmt
+        THEN    limitBook[1].amount
+        ELSE    stopHeadBidAmount
 IN
     \* IF TRUE then amount traded is equal to limitHead amount
     \* stopHead is equal to or greater than limitHead
     \* amount in this case.
-    IF limitBook[1].amount <= stopHeadBidAmt
+    IF 
     THEN 
         LET strikeBidAmt == limitBook[1].amount
             strikeAskAmt == 

@@ -60,7 +60,17 @@ LET
                         strikeExchrate[1]
                     ) \div strikeExchrate[2]
             IN
-                /\  limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+                /\  IF limitHead.amount <= maxPoolAmt
+                    THEN limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+                    ELSE limits' = [limitUpd EXCEPT ![askCoin, bidCoin] = Append(
+                                Tail(@), 
+                                [
+                                    account |-> limitBook[1].account,
+                                    exchrate |-> limitBook[1].exchrate,
+                                    amount |-> limitBook[1].amount - strikeBidAmt
+                                ]
+                            )
+                         ]
                 /\  accounts' = 
                     [ accounts EXCEPT 
                         ![limitBook[1].acct, bidCoin] = @ - strikeBidAmt,
