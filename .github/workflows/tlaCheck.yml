@@ -25,7 +25,7 @@ jobs:
           wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
       - name: Check Market3 (TLC)
         run: |
-          java -jar tla2tools.jar ./Machine_Checked/MCMarket3.tla -config ./Machine_Checked/MCMarket3.cfg -simulate num=1000
+          java -jar tla2tools.jar Machine_Checked/MCMarket3.tla -config ./Machine_Checked/MCMarket3.cfg -simulate num=1000
   check-market:
     name: Check Market.tla
     runs-on: ubuntu-latest
@@ -41,4 +41,4 @@ jobs:
           wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
       - name: Check Market (TLC)
         run: |
-          java -jar tla2tools.jar ./Market/MCMarket.tla -config ./Market/MCMarket.cfg -simulate num=1000
+          java -jar tla2tools.jar Market/MCMarket.tla -config ./Market/MCMarket.cfg -simulate num=1000
