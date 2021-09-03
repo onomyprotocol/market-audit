@@ -1,6 +1,5 @@
-------------------------------- MODULE Market --------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Functions, MarketHelpers, Naturals, 
-            Sequences, SequencesExt
+------------------------------- MODULE Market3 -------------------------------
+EXTENDS     FiniteSets, FiniteSetsExt, Functions, Naturals, Sequences, SequencesExt
 
 CONSTANT    ExchAccount,    \* Set of all accounts
             MaxAmount       \* Max amount of coins in circulation
@@ -19,8 +18,21 @@ VARIABLE    accounts,
 
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
-INSTANCE Execute
 -----------------------------------------------------------------------------
+\* Nat tuple (numerator/denominator) inequality helper functions
+\* All equalities assume Natural increments
+GT(a, b) == a[1]*b[2] > a[2]*b[1]
+
+GTE(a, b) == a[1]*b[2] >= a[2]*b[1] 
+
+LT(a, b) == a[1]*b[2] < a[2]*b[1]
+
+LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
+
+\* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
+\* all of the position amounts. Returns 0 if seq is empty.
+SumSeqPos(seq) == FoldLeft( LAMBDA p,q: p + q.amount, 0, seq )
+
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 \* PositionInv( limitsSeq, stopsSeq, balance ) ==
 \*     SumSeqPos( limitsSeq ) + SumSeqPos(stopsSeq) <= balance
@@ -87,6 +99,8 @@ Deposit(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ - amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
 
+SelectAcctSeq(acct, book) == SelectSeq(book, LAMBDA pos: pos.account = acct)
+
 \* Given an account and a coin,
 \* sum up over all positions that are open for the coin and the account.
 SumForAccountAndCoin(acct, coin) ==
@@ -113,11 +127,10 @@ Withdraw(acct, amount, coinType) ==
     /\  reserve' = [reserve EXCEPT ![coinType] = @ + amount]
     /\  UNCHANGED << drops, limits, pools, stops >>
 
-Open(askCoin, bidCoin, limitOrStop, pos) ==
+Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
 \*  In order to open a position, pool must not be empty
 /\  pools[askCoin, bidCoin] > 0
-/\  LET acct == pos.account
-        limitBook == limits[askCoin, bidCoin]
+/\  LET limitBook == limits[askCoin, bidCoin]
         stopBook == stops[askCoin, bidCoin]
         balance == accounts[acct, bidCoin] IN 
     \* precondition: Exchange Account Balance of Bid Coin must be at least the
@@ -134,11 +147,11 @@ Open(askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < igte
                     THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ LET limitsUpd == [ limits EXCEPT ![askCoin, bidCoin] =
+                  /\ limits' = [ limits EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
-                     ] IN Execute(askCoin, bidCoin, limitsUpd, stops) 
-                
+                     ] 
+                /\ UNCHANGED << drops, pools, stops >>
             \* ELSE type is stops
             ELSE
                 \* ilte is the index of pos in the extended sequence such that:
@@ -149,12 +162,15 @@ Open(askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ LET stopsUpd == [ stops EXCEPT ![askCoin, bidCoin] =
+                  /\ stops' = [ stops EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
-                    ] IN Execute(askCoin, bidCoin, limits, stopsUpd)
+                    ] 
+                /\  UNCHANGED << drops, limits, pools >>
+    /\ UNCHANGED << accounts, drops, pools, reserve >>
 
-Close(askCoin, bidCoin, limitOrStop, pos) == 
+Close(acct, askCoin, bidCoin, limitOrStop, pos) == 
+    /\  pos.account = acct \* you can only close your own acct's positions
     /\  IF limitOrStop = "limit"
         THEN
             /\ Contains(limits[askCoin, bidCoin], pos)
@@ -246,7 +262,7 @@ NEXT ==
             \E  bidCoin \in CoinType \ {askCoin} :
             \/  \E  exchrate \in ExchRateType:
                 \E  bidAmount \in PositiveAmounts :
-                    \/  Open(askCoin, bidCoin, limitOrStop, [
+                    \/  Open(acct, askCoin, bidCoin, limitOrStop, [
                             account |-> acct,
                             \* Exchange Rate is defined as
                             \* exchrate[1] / exchrate[2]
@@ -254,7 +270,7 @@ NEXT ==
                             amount |-> bidAmount
                         ])
                     
-                    \/  Close(askCoin, bidCoin, limitOrStop, [
+                    \/  Close(acct, askCoin, bidCoin, limitOrStop, [
                             account |-> acct,
                             exchrate |-> exchrate,                            
                             amount |-> bidAmount
