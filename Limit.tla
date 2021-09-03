@@ -26,7 +26,7 @@ LET
     limitHead == Head(limitBook)
     poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
     strikeExchrate ==
-        CASE Len(stopBook) = 0 /\ Len(stopBook) = 1 ->
+        CASE Len(stopBook) = 0 /\ Len(limitBook) = 1 ->
                 Head(stopBook).exchrate
         []   Len(stopBook) > 0 /\ Len(limitBook) = 1 ->
                 <<

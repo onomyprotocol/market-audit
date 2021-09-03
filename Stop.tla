@@ -21,89 +21,58 @@ VARIABLE    accounts,
 
 Stop(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 
-LET limitBook == limitsUpd[askCoin, bidCoin]
-    limitHead == Head(limitBook)
-    stopBook == stopsUpd[bidCoin, askCoin]
+LET 
+    stopBook == stopsUpd[bidCoin, askCoin]    
     stopHead == Head(stopBook)
-    stopHeadInvExchrate == << 
-        stopBook[1].exchrate[2], 
-        stopBook[1].exchrate[1] 
-    >>
+    stopHeadInvExchrate == << stopHead.exchrate[2], stopHead.exchrate[1] >>
+    limitBook == limitsUpd[askCoin, bidCoin]
+    poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
     strikeExchrate ==
-        IF Len(stopBook) > 1
-        THEN 
-            IF Len(limitBook) > 0
-            THEN
-                \* Strike price is based on the most adjacent
-                \* order based on price.
-                IF LTE(
-                        stopBook[2].exchrate,
+        CASE Len(limitBook) = 0 /\ Len(stopBook) = 1 ->
+                Head(stopBook).exchrate
+        []   Len(limitBook) > 0 /\ Len(stopBook) = 1 ->
+                Head(limitBook).exchrate
+        []   Len(limitBook) > 0 /\ Len(stopBook) > 1 ->
+                IF LT(
                         <<
-                            limitHead.exchrate[2],
-                            limitHead.exchrate[1]
-                        >>
-                    )
-                THEN stopBook[2].exchrate
-                ELSE <<
-                        limitHead.exchrate[2],
-                        limitHead.exchrate[1]
-                    >>
-            ELSE << limitBook[2].exchrate[2], limitBook[2].exchrate[1] >>
-        ELSE 
-            IF Len(limitBook) > 0
-            THEN <<
-                limitHead.exchrate[2],
-                limitHead.exchrate[1]
-            >>
-            ELSE stopHead.exchrate
-    maxPoolAmt == MaxPoolBid(pools[bidCoin, askCoin], pools[askCoin, bidCoin], strikeExchrate)
-IN
-    IF stopHead.amount <= maxPoolAmt
-    THEN \* Fulfill entire stop order
-        LET strikeBidAmt == stopHead.amount
-            strikeAskAmt == 
-                (
-                    strikeBidAmt *
-                    strikeExchrate[1]
-                ) \div strikeExchrate[2]
-        IN
-            /\  stops' = [stopsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
-            /\  accounts' = 
-                [ accounts EXCEPT 
-                    ![stopBook[1].acct, bidCoin] = @ - strikeBidAmt,
-                    ![stopBook[1].acct, askCoin] = @ + strikeAskAmt
-                ] 
-            /\  pools' = 
-                [ pools EXCEPT
-                    ![askCoin, bidCoin] = @ + strikeBidAmt,
-                    ![bidCoin, askCoin] = @ - strikeAskAmt 
-                ]
-    ELSE \* Partial fill limit order
-        LET strikeBidAmt == maxPoolAmt
-            strikeAskAmt == 
-                (
-                    strikeBidAmt *
-                    strikeExchrate[1]
-                ) * strikeExchrate[2]
-        IN
-        /\  stops' = [stopsUpd EXCEPT ![askCoin, bidCoin] = 
-                Append(
-                    Tail(@), <<[
-                        account: stopBook[1].accounts,
-                        exchrate: stopBook[1].exchrate,
-                        amount: stopBook[1].amount - strikeBidAmt
-                    ]>>
-                )
-            ]
-        /\  accounts' = 
-            [ accounts EXCEPT 
-                ![stopHead.account, bidCoin] = @ - strikeBidAmt,
-                ![stopHead.account, askCoin] = @ + strikeAskAmt
-            ] 
-        /\  pools' = 
-            [ pools EXCEPT
-                ![askCoin, bidCoin] = @ + strikeBidAmt,
-                ![bidCoin, askCoin] = @ - strikeAskAmt 
-            ]
+                            stopBook[2].exchrate[2], 
+                            stopBook[2].exchrate[1]
+                        >>,
+                        Head(limitBook).exchrate
+                   )
+                THEN <<
+                        stopBook[2].exchrate[2], 
+                        stopBook[2].exchrate[1]
+                     >>
+                ELSE Head(limitBook).exchrate
+    IN
+        LET
+            maxPoolAmt == MaxPoolBid(
+                poolExchrate[1], 
+                poolExchrate[2], 
+                strikeExchrate
+            )
+        IN  
+            LET strikeBidAmt ==
+                    IF stopHead.amount <= maxPoolAmt
+                    THEN stopHead.amount
+                    ELSE maxPoolAmt
 
+                    strikeAskAmt == (
+                        strikeBidAmt *
+                        strikeExchrate[1]
+                    ) \div strikeExchrate[2]
+            IN
+                /\  stops' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+                /\  accounts' = 
+                    [ accounts EXCEPT 
+                        ![stopBook[1].acct, bidCoin] = @ - strikeBidAmt,
+                        ![stopBook[1].acct, askCoin] = @ + strikeAskAmt
+                    ] 
+                /\  pools' = 
+                    [ pools EXCEPT
+                        ![askCoin, bidCoin] = @ + strikeBidAmt,
+                        ![bidCoin, askCoin] = @ - strikeAskAmt 
+                    ]
+                /\  UNCHANGED <<drops, reserve, limits>>
 =============================================================================
