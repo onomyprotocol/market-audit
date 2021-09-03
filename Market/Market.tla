@@ -1,4 +1,4 @@
-------------------------------- MODULE Market3 -------------------------------
+------------------------------- MODULE Market -------------------------------
 EXTENDS     FiniteSets, FiniteSetsExt, Functions, Naturals, Sequences, SequencesExt
 
 CONSTANT    ExchAccount,    \* Set of all accounts
