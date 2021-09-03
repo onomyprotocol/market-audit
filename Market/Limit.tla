@@ -27,7 +27,7 @@ LET
     poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
     strikeExchrate ==
         CASE Len(stopBook) = 0 /\ Len(limitBook) = 1 ->
-                Head(stopBook).exchrate
+                Head(limitBook).exchrate
         []   Len(stopBook) > 0 /\ Len(limitBook) = 1 ->
                 <<
                     Head(stopBook).exchrate[2],
@@ -62,7 +62,7 @@ LET
             IN
                 /\  IF limitHead.amount <= maxPoolAmt
                     THEN limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
-                    ELSE limits' = [limitUpd EXCEPT ![askCoin, bidCoin] = Append(
+                    ELSE limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Append(
                                 Tail(@), 
                                 [
                                     account |-> limitBook[1].account,
@@ -73,8 +73,8 @@ LET
                          ]
                 /\  accounts' = 
                     [ accounts EXCEPT 
-                        ![limitBook[1].acct, bidCoin] = @ - strikeBidAmt,
-                        ![limitBook[1].acct, askCoin] = @ + strikeAskAmt
+                        ![limitBook[1].account, bidCoin] = @ - strikeBidAmt,
+                        ![limitBook[1].account, askCoin] = @ + strikeAskAmt
                     ] 
                 /\  pools' = 
                     [ pools EXCEPT
