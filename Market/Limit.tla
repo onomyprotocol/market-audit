@@ -28,6 +28,8 @@ LET
     strikeExchrate ==
         CASE Len(stopBook) = 0 /\ Len(limitBook) = 1 ->
                 Head(limitBook).exchrate
+        []   Len(stopBook) = 0 /\ Len(limitBook) > 1 ->
+                limitBook[2].exchrate
         []   Len(stopBook) > 0 /\ Len(limitBook) = 1 ->
                 <<
                     Head(stopBook).exchrate[2],
@@ -42,6 +44,7 @@ LET
                     IF LT(limitBook[2].exchrate, stopHeadInvExchrate)
                     THEN limitBook[2].exchrate
                     ELSE stopHeadInvExchrate
+
     IN
         LET
             maxPoolAmt == MaxPoolBid(
