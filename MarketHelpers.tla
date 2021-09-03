@@ -1,5 +1,5 @@
 --------------------------- MODULE MarketHelpers ---------------------------
-EXTENDS Integers, Sequences, SequencesExt, FiniteSets
+EXTENDS Naturals, Sequences, SequencesExt, FiniteSets
 \* Nat tuple (numerator/denominator) inequality helper functions
 \* All equalities assume Natural increments
 EQ(a, b) == a[1]*b[2] = a[2]*b[1]
@@ -16,31 +16,14 @@ LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 (* Max amount that pool may sell of ask coin without                       *)
 (* executing the most adjacent order                                       *)
 (*                                                                         *)
-(* Differential Invariant:                                                 *)
-(* d(poolAsk) / d(poolBid) = d(erate)                                      *)
-(* d(poolAsk) = d(poolBid) * d(erate)                                      *)
-(*                                                                         *)
-(* Integrate over poolAsk on lhs and poolBid & erate on rhs then           *)
-(* substitute and simplify                                                 *)
-(*                                                                         *)
-(* MaxPoolBid ==    [(BidBalanceInitial * exchrateFinal^2) \               *)
-(*                  (2 * exchrateFinal + exchrateInitial)] -               *)
-(*                  AskBalanceInitial                                      *)
+(* b(final) = b(init) as AMM only gives the ask coin.                      *)
+(* a(final) = b(final) * exchrate(final)                                   *)
+(* a(final) = b(init) * exchrate(final)                                    *)
+(* a(diff) = a(init) - a(final)                                            *)
+(* a(diff) = a(init) - b(init) * exchrate(final)                           *)
 (***************************************************************************)
 MaxPoolBid(askBalInit, bidBalInit, erateFinal) ==
-
-(
-    bidBalInit * erateFinal * erateFinal) \div
-    (
-        (
-            (
-                (2 * erateFinal[1]) \div
-                erateFinal[2]
-            ) * bidBalInit +
-        askBalInit
-    ) \div bidBalInit
-)
- - askBalInit
+askBalInit - (bidBalInit * erateFinal[1]) \div erateFinal[2]
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
 \* all of the position amounts. Returns 0 if seq is empty.

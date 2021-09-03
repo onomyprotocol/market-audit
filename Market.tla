@@ -19,6 +19,7 @@ VARIABLE    accounts,
 
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
+INSTANCE Execute
 -----------------------------------------------------------------------------
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 \* PositionInv( limitsSeq, stopsSeq, balance ) ==
@@ -133,11 +134,11 @@ Open(askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < igte
                     THEN LTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE LT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ limits' = [ limits EXCEPT ![askCoin, bidCoin] =
+                  /\ LET limitsUpd == [ limits EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
-                     ] 
-                /\ UNCHANGED << drops, pools, stops >>
+                     ] IN Execute(askCoin, bidCoin, limitsUpd, stops) 
+                
             \* ELSE type is stops
             ELSE
                 \* ilte is the index of pos in the extended sequence such that:
@@ -148,12 +149,10 @@ Open(askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ stops' = [ stops EXCEPT ![askCoin, bidCoin] =
+                  /\ LET stopsUpd == [ stops EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
-                    ] 
-                /\  UNCHANGED << drops, limits, pools >>
-    /\ UNCHANGED << accounts, drops, pools, reserve >>
+                    ] IN Execute(askCoin, bidCoin, limits, stopsUpd)
 
 Close(askCoin, bidCoin, limitOrStop, pos) == 
     /\  IF limitOrStop = "limit"

@@ -24,18 +24,20 @@ INSTANCE NoLoss
 -----------------------------------------------------------------------------
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
-    stopBook == stopsUpd[bidCoin, askCoin]
-    stopHead == Head(stopBook)
-    stopHeadInvExchrate == << 
-        stopHead.exchrate[2], 
-        stopHead.exchrate[1] 
-    >>
-    
+    stopBook == stopsUpd[bidCoin, askCoin]    
     limitBook == limitsUpd[askCoin, bidCoin]
-    limitHead == Head(limitBook)
-    stopHeadExchrate == stopHead.exchrate
-    
-    poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
+IN
+    CASE Len(stopBook) = 0 -> Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
+    [] Len(limitBook) = 0 -> Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
+    [] OTHER ->
+    LET
+        limitHead == Head(limitBook)
+        stopHead == Head(stopBook)
+        stopHeadInvExchrate == << 
+            stopHead.exchrate[2], 
+            stopHead.exchrate[1] 
+        >>
+        poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
 IN
     (***************************************************************************)
     (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
@@ -64,7 +66,7 @@ IN
         (*                                                                     *)
         (*   Action: Execute Ask Stop Order                                    *)
         (***********************************************************************)
-        []      LT(stopHeadInvExchrate, stopHeadExchrate) ->
+        []      LT(stopHeadInvExchrate, limitHead.exchrate) ->
             Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
     (***************************************************************************)
     (* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
@@ -72,10 +74,10 @@ IN
     (*                                                                         *)
     (* Action: Execute Bid Limit Order                                         *)
     (***************************************************************************)      
-    []      GT(stopHeadExchrate, poolExchrate) ->  
+    []      GT(poolExchrate, limitHead.exchrate) ->  
         Limit(askCoin, bidCoin, limitsUpd, stopsUpd)      
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Aug 24 12:29:08 CDT 2021 by Charles Dusek
+\* Last modified Thu Sep 02 19:52:36 CDT 2021 by Charles Dusek
 \* Created Fri Aug 20 16:24:24 CDT 2021 by Charles Dusek

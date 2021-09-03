@@ -20,13 +20,87 @@ VARIABLE    accounts,
 -----------------------------------------------------------------------------
 
 Limit(askCoin, bidCoin, limitsUpd, stopsUpd) ==
-
-LET limitBook == limitsUpd[askCoin, bidCoin]
+LET 
+    stopBook == stopsUpd[bidCoin, askCoin]    
+    limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
-    stopBook  == stopsUpd[bidCoin, askCoin]
-    stopHead == Head(stopBook)
-    poolExchrate == pools[bidCoin, askCoin] \div
-                    pools[askCoin, bidCoin]
+    poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
+    strikeExchrate ==
+        CASE Len(stopBook) = 0 /\ Len(stopBook) = 1 ->
+             Head(stopBook).exchrate
+        []   Len(stopBook) > 0 /\ Len(limitBook) > 1 ->
+            LET stopHeadExchrate == <<
+                    Head(stopBook).exchrate[2],
+                    Head(stopBook).exchrate[1]
+                >>
+            IN
+                IF LT(limitBook[2].exchrate, stopHeadExchrate)
+                THEN limitBook[2].exchrate
+        LET
+            maxPoolAmt == MaxPoolBid(
+                poolExchrate[1], 
+                poolExchrate[2], 
+                strikeExchrate
+            )
+        IN
+            IF limitHead.amount <= maxPoolAmt
+    THEN \* Fulfill entire limit order
+        LET strikeBidAmt == limitHead.amount
+            strikeAskAmt == 
+                (
+                    strikeBidAmt *
+                    strikeExchrate[1]
+                ) \div strikeExchrate[2]
+        IN
+            /\  limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+            /\  accounts' = 
+                [ accounts EXCEPT 
+                    ![limitBook[1].acct, bidCoin] = @ - strikeBidAmt,
+                    ![limitBook[1].acct, askCoin] = @ + strikeAskAmt
+                ] 
+            /\  pools' = 
+                [ pools EXCEPT
+                    ![askCoin, bidCoin] = @ + strikeBidAmt,
+                    ![bidCoin, askCoin] = @ - strikeAskAmt 
+                ]
+            /\  UNCHANGED <<drops, reserve, stops>>
+    ELSE \* Partial fill limit order
+        LET strikeBidAmt == MaxPoolBid(
+                pools[bidCoin, askCoin], 
+                pools[askCoin, bidCoin],
+                strikeExchrate
+            )
+            strikeAskAmt == 
+                (
+                    strikeBidAmt *
+                    strikeExchrate[1]
+                ) * strikeExchrate[2]
+        IN
+        /\  limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
+                Append(
+                    Tail(@), [
+                        account |-> limitBook[1].account,
+                        exchrate |-> limitBook[1].exchrate,
+                        amount |-> (limitBook[1].amount - strikeBidAmt)
+                    ]
+                )
+            ]
+        /\  accounts' = 
+            [ accounts EXCEPT 
+                ![limitBook[1].account, bidCoin] = @ - strikeBidAmt,
+                ![limitBook[1].account, askCoin] = @ + strikeAskAmt
+            ] 
+        /\  pools' = 
+            [ pools EXCEPT
+                ![askCoin, bidCoin] = @ + strikeBidAmt,
+                ![bidCoin, askCoin] = @ - strikeAskAmt 
+            ]
+        /\  UNCHANGED <<drops, reserve, stops>>
+    [] OTHER ->
+        LET
+            stopBook  == stopsUpd[bidCoin, askCoin]
+            stopHead == Head(stopBook)
+    
     strikeExchrate ==
         IF Len(limitBook) > 1
         THEN 
@@ -76,6 +150,7 @@ IN
                     ![askCoin, bidCoin] = @ + strikeBidAmt,
                     ![bidCoin, askCoin] = @ - strikeAskAmt 
                 ]
+            /\  UNCHANGED <<drops, reserve, stops>>
     ELSE \* Partial fill limit order
         LET strikeBidAmt == MaxPoolBid(
                 pools[bidCoin, askCoin], 
@@ -90,11 +165,11 @@ IN
         IN
         /\  limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
                 Append(
-                    Tail(@), <<[
-                        account: limitBook[1].account,
-                        exchrate: limitBook[1].exchrate,
-                        amount: limitBook[1].amount - strikeBidAmt
-                    ]>>
+                    Tail(@), [
+                        account |-> limitBook[1].account,
+                        exchrate |-> limitBook[1].exchrate,
+                        amount |-> (limitBook[1].amount - strikeBidAmt)
+                    ]
                 )
             ]
         /\  accounts' = 
@@ -107,5 +182,6 @@ IN
                 ![askCoin, bidCoin] = @ + strikeBidAmt,
                 ![bidCoin, askCoin] = @ - strikeAskAmt 
             ]
+        /\  UNCHANGED <<drops, reserve, stops>>
 
 =============================================================================
