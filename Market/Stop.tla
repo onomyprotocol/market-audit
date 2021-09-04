@@ -20,7 +20,6 @@ VARIABLE    accounts,
 -----------------------------------------------------------------------------
 
 Stop(askCoin, bidCoin, limitsUpd, stopsUpd) ==
-
 LET 
     stopBook == stopsUpd[bidCoin, askCoin]    
     stopHead == Head(stopBook)
@@ -30,20 +29,13 @@ LET
     strikeExchrate ==
         CASE Len(limitBook) = 0 /\ Len(stopBook) = 1 ->
                 Head(stopBook).exchrate
+        []   Len(limitBook) = 0 /\ Len(stopBook) > 1 ->
+                stopBook[2].exchrate
         []   Len(limitBook) > 0 /\ Len(stopBook) = 1 ->
                 Head(limitBook).exchrate
         []   Len(limitBook) > 0 /\ Len(stopBook) > 1 ->
-                IF LT(
-                        <<
-                            stopBook[2].exchrate[2], 
-                            stopBook[2].exchrate[1]
-                        >>,
-                        Head(limitBook).exchrate
-                   )
-                THEN <<
-                        stopBook[2].exchrate[2], 
-                        stopBook[2].exchrate[1]
-                     >>
+                IF LT(stopBook[2].exchrate, Head(limitBook).exchrate)
+                THEN stopBook[2].exchrate
                 ELSE Head(limitBook).exchrate
     IN
         LET
@@ -63,11 +55,19 @@ LET
                         strikeExchrate[1]
                     ) \div strikeExchrate[2]
             IN
-                /\  stops' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+                /\  IF stopHead.amount <= maxPoolAmt
+                    THEN stops' = [stopsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+                    ELSE stops' = [stopsUpd EXCEPT ![askCoin, bidCoin] = 
+                                <<[
+                                    account |-> stopBook[1].account,
+                                    exchrate |-> stopBook[1].exchrate,
+                                    amount |-> stopBook[1].amount - strikeBidAmt
+                                ]>> \o Tail(@)
+                         ]
                 /\  accounts' = 
                     [ accounts EXCEPT 
-                        ![stopBook[1].acct, bidCoin] = @ - strikeBidAmt,
-                        ![stopBook[1].acct, askCoin] = @ + strikeAskAmt
+                        ![stopBook[1].account, bidCoin] = @ - strikeBidAmt,
+                        ![stopBook[1].account, askCoin] = @ + strikeAskAmt
                     ] 
                 /\  pools' = 
                     [ pools EXCEPT

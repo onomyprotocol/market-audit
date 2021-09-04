@@ -19,7 +19,7 @@ VARIABLE    accounts,
 
 
 INSTANCE Limit
-\* INSTANCE Stop
+INSTANCE Stop
 -----------------------------------------------------------------------------
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
@@ -32,17 +32,18 @@ IN
         THEN Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ limits' = limitsUpd
                 /\ UNCHANGED << accounts, drops, pools, reserve, stops >>
-    [] OTHER -> /\ UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
-(*    []      Len(limitBook) = 0 /\ Len(stopBook) > 0 ->
-        IF GT(poolExchrate, 
+    []      Len(limitBook) = 0 /\ Len(stopBook) > 0 ->
+        IF GT(poolExchrate,
             <<
                 Head(stopBook).exchrate[2],
                 Head(stopBook).exchrate[1]
             >>
            )
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
-        ELSE /\ stops' = stopsUpd
-             /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
+        ELSE    /\ stops' = stopsUpd
+                /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
+    [] OTHER -> /\ UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
+(*    
            
     [] Len(limitBook) = 0 -> Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
     LET
@@ -95,5 +96,5 @@ IN
 *)
 =============================================================================
 \* Modification History
-\* Last modified Fri Sep 03 17:25:09 CDT 2021 by Charles Dusek
+\* Last modified Fri Sep 03 22:31:30 CDT 2021 by Charles Dusek
 \* Created Fri Aug 20 16:24:24 CDT 2021 by Charles Dusek
