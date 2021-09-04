@@ -20,6 +20,7 @@ VARIABLE    accounts,
 
 INSTANCE Limit
 INSTANCE Stop
+\* INSTANCE NoLoss
 -----------------------------------------------------------------------------
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
@@ -42,10 +43,8 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ stops' = stopsUpd
                 /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-    [] OTHER -> /\ UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
-(*    
-           
-    [] Len(limitBook) = 0 -> Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
+    [] OTHER -> UNCHANGED << accounts, drops, limits, pools, reserve >>
+(*           
     LET
         limitHead == Head(limitBook)
         stopHead == Head(stopBook)
@@ -53,9 +52,7 @@ IN
             stopHead.exchrate[2], 
             stopHead.exchrate[1] 
         >>
-        poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
-
-IN
+    IN
     (***************************************************************************)
     (* CASE 1: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
     (*         than or equal Ask Stop Book Inverse Exchange Rate               *)
@@ -96,5 +93,5 @@ IN
 *)
 =============================================================================
 \* Modification History
-\* Last modified Fri Sep 03 22:31:30 CDT 2021 by Charles Dusek
+\* Last modified Fri Sep 03 23:21:58 CDT 2021 by Charles Dusek
 \* Created Fri Aug 20 16:24:24 CDT 2021 by Charles Dusek
