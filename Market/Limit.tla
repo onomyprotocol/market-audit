@@ -65,14 +65,12 @@ LET
             IN
                 /\  IF limitHead.amount <= maxPoolAmt
                     THEN limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
-                    ELSE limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Append(
-                                Tail(@), 
-                                [
+                    ELSE limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
+                                <<[
                                     account |-> limitBook[1].account,
                                     exchrate |-> limitBook[1].exchrate,
                                     amount |-> limitBook[1].amount - strikeBidAmt
-                                ]
-                            )
+                                ]>> \o Tail(@)
                          ]
                 /\  accounts' = 
                     [ accounts EXCEPT 
