@@ -49,9 +49,12 @@ LET
     IN
         LET
             maxPoolAmt == MaxPoolBid(
-                poolExchrate[1], 
                 poolExchrate[2], 
-                strikeExchrate
+                poolExchrate[1], 
+                << 
+                    strikeExchrate[2],
+                    strikeExchrate[1]
+                >>
             )
         IN  
             LET strikeAskAmt ==
@@ -70,7 +73,7 @@ LET
                                 <<[
                                     account |-> stopBook[1].account,
                                     exchrate |-> stopBook[1].exchrate,
-                                    amount |-> stopBook[1].amount - strikeBidAmt
+                                    amount |-> stopBook[1].amount - strikeAskAmt
                                 ]>> \o Tail(@)
                          ]
                 /\  accounts' = 

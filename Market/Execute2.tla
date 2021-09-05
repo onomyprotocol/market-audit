@@ -43,8 +43,8 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ stops' = stopsUpd
                 /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-    []      OTHER ->
-           
+    []      OTHER -> /\ UNCHANGED << accounts, drops, limits, pools, stops, reserve >>
+(*           
     LET
         limitHead == Head(limitBook)
         stopHead == Head(stopBook)
@@ -98,5 +98,5 @@ IN
                     []      OTHER -> 
                         /\  limits' = limitsUpd
                         /\  UNCHANGED << accounts, drops, pools, reserve, stops >>
-                
+*)            
 =============================================================================
