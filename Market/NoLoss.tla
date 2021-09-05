@@ -1,5 +1,5 @@
 ------------------------------ MODULE NoLoss ------------------------------
-EXTENDS     FiniteSets, FiniteSetsExt, Integers, Sequences, SequencesExt,
+EXTENDS     FiniteSets, FiniteSetsExt, Naturals, Sequences, SequencesExt,
             MarketHelpers
 
 CONSTANT    ExchAccount,    \* Set of all accounts
@@ -22,9 +22,9 @@ VARIABLE    accounts,
 NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 \* Getting to this point means that both an Ask Stop and a Bid
 \* Limit are equal and enabled.
-LET limitBook == limits[askCoin, bidCoin]
+LET limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
-    stopBook  == stops[bidCoin, askCoin]
+    stopBook  == stopsUpd[bidCoin, askCoin]
     stopHead == Head(stopBook)
     
     \* Strike Exchrate either limit or stop as equal
@@ -65,36 +65,36 @@ LET limitBook == limits[askCoin, bidCoin]
         strikeExchrate[2]
     strikeAskAmt == 
         IF stopHead.amount <= limitHeadAskAmt
-        THEN    limitBook[1].amount
-        ELSE    stopHeadBidAmt
+        THEN    limitHeadAskAmt
+        ELSE    stopHead.amount
 IN
-    
-            /\  accounts' = 
-                [ accounts EXCEPT 
-                    ![limitBook[1].account, bidCoin] = @ - strikeBidAmt,
-                    ![limitBook[1].account, askCoin] = @ + strikeAskAmt,
-                    ![stopBook[1].account, bidCoin] = @ + strikeBidAmt,
-                    ![stopBook[1].account, askCoin] = @ - strikeAskAmt
-                ]
 
-            /\  IF limitHead.amount = strikeBidAmt
-                    THEN limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
-                    ELSE limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
-                                <<[
-                                    account |-> limitBook[1].account,
-                                    exchrate |-> limitBook[1].exchrate,
-                                    amount |-> limitBook[1].amount - strikeBidAmt
-                                ]>> \o Tail(@)
-                         ]
-            /\  IF stopHead.amount = strikeBidAmt
-                    THEN stops' = [stopsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
-                    ELSE stops' = [stopsUpd EXCEPT ![askCoin, bidCoin] = 
-                                <<[
-                                    account |-> stopBook[1].account,
-                                    exchrate |-> stopBook[1].exchrate,
-                                    amount |-> stopBook[1].amount - strikeBidAmt
-                                ]>> \o Tail(@)
-                         ]
+    /\  accounts' = 
+        [ accounts EXCEPT 
+            ![limitHead.account, bidCoin] = @ - strikeBidAmt,
+            ![limitHead.account, askCoin] = @ + strikeAskAmt,
+            ![stopHead.account, bidCoin] = @ + strikeBidAmt,
+            ![stopHead.account, askCoin] = @ - strikeAskAmt
+        ]
+
+    /\  IF limitHead.amount = strikeBidAmt
+            THEN limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
+            ELSE limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
+                        <<[
+                            account |-> limitBook[1].account,
+                            exchrate |-> limitBook[1].exchrate,
+                            amount |-> limitBook[1].amount - strikeBidAmt
+                        ]>> \o Tail(@)
+                 ]
+    /\  IF stopHead.amount = strikeAskAmt
+            THEN stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = Tail(@)]
+            ELSE stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = 
+                        <<[
+                            account |-> stopBook[1].account,
+                            exchrate |-> stopBook[1].exchrate,
+                            amount |-> stopBook[1].amount - strikeAskAmt
+                        ]>> \o Tail(@)
+                 ]
 
 
 =============================================================================

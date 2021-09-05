@@ -20,7 +20,7 @@ VARIABLE    accounts,
 
 INSTANCE Limit
 INSTANCE Stop
-\* INSTANCE NoLoss
+INSTANCE NoLoss
 -----------------------------------------------------------------------------
 Execute(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
@@ -43,7 +43,17 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ stops' = stopsUpd
                 /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-    [] OTHER -> UNCHANGED << accounts, drops, limits, pools, reserve >>
+    []      Len(limitBook) > 0 /\ Len(stopBook) > 0 ->
+        IF EQ(
+            <<
+                Head(stopBook).exchrate[2],
+                Head(stopBook).exchrate[1]
+            >>,
+            Head(limitBook).exchrate
+           )
+        THEN NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
+        ELSE UNCHANGED << accounts, drops, limits, pools, reserve >>
+    []      OTHER ->  UNCHANGED << accounts, drops, limits, pools, reserve >>
 (*           
     LET
         limitHead == Head(limitBook)
@@ -93,5 +103,5 @@ IN
 *)
 =============================================================================
 \* Modification History
-\* Last modified Fri Sep 03 23:21:58 CDT 2021 by Charles Dusek
+\* Last modified Sat Sep 04 20:39:36 CDT 2021 by Charles Dusek
 \* Created Fri Aug 20 16:24:24 CDT 2021 by Charles Dusek
