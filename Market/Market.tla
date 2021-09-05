@@ -137,7 +137,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
                      ] IN Execute(askCoin, bidCoin, limitsUpd, stops)
-                /\ UNCHANGED << drops, pools, stops >>
+                
             \* ELSE type is stops
             ELSE
                 \* ilte is the index of pos in the extended sequence such that:
@@ -148,11 +148,11 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ stops' = [ stops EXCEPT ![askCoin, bidCoin] =
+                  /\ LET stopsUpd == [ stops EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
-                    ] 
-                /\  UNCHANGED << drops, limits, pools >>
+                    ] IN Execute(askCoin, bidCoin, stopsUpd, limits)
+                
     /\ UNCHANGED << accounts, drops, pools, reserve >>
 
 Close(acct, askCoin, bidCoin, limitOrStop, pos) == 

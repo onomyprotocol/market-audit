@@ -43,18 +43,8 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ stops' = stopsUpd
                 /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-    []      Len(limitBook) > 0 /\ Len(stopBook) > 0 ->
-        IF EQ(
-            <<
-                Head(stopBook).exchrate[2],
-                Head(stopBook).exchrate[1]
-            >>,
-            Head(limitBook).exchrate
-           )
-        THEN NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
-        ELSE UNCHANGED << accounts, drops, limits, pools, reserve >>
-    []      OTHER ->  UNCHANGED << accounts, drops, limits, pools, reserve >>
-(*           
+    []      OTHER ->
+           
     LET
         limitHead == Head(limitBook)
         stopHead == Head(stopBook)
@@ -99,9 +89,14 @@ IN
     (* Action: Execute Bid Limit Order                                         *)
     (***************************************************************************)      
     []      GT(poolExchrate, limitHead.exchrate) ->  
-        Limit(askCoin, bidCoin, limitsUpd, stopsUpd)      
-*)
+        Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
+    []  OTHER -> /\ CASE    limits' = limitsUpd /\ stops' = stopsUpd ->
+                    UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
+                    []      limits' = limitsUpd ->
+                        /\  stops' = stopsUpd
+                        /\  UNCHANGED << accounts, drops, limits, pools, reserve >>
+                    []      OTHER -> 
+                        /\  limits' = limitsUpd
+                        /\  UNCHANGED << accounts, drops, pools, reserve, stops >>
+                
 =============================================================================
-\* Modification History
-\* Last modified Sat Sep 04 20:39:36 CDT 2021 by Charles Dusek
-\* Created Fri Aug 20 16:24:24 CDT 2021 by Charles Dusek
