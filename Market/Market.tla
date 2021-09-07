@@ -117,14 +117,14 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
 \*  In order to open a position, pool must not be empty
 /\  pools[askCoin, bidCoin] > 0
 /\  LET limitBook == limits[askCoin, bidCoin]
-        stopBook == stops[askCoin, bidCoin]
-        balance == accounts[acct, bidCoin] IN 
-    \* precondition: Exchange Account Balance of Bid Coin must be at least the
-    \* total amounts in all positions for all pairs with the Bid Coin. 
-    /\ balance >= pos.amount + SumForAccountAndCoin(acct, bidCoin)
+        stopBook == stops[bidCoin, askCoin]
+    IN
     /\  LET seqOfPos == IF limitOrStop = "limit" THEN limitBook ELSE stopBook IN
         /\  IF limitOrStop = "limit"
             THEN
+                \* precondition: Exchange Account Balance of Bid Coin must be at least the
+                \* total amounts in all positions for all pairs with the Bid Coin.
+                /\  accounts[acct, bidCoin] >= pos.amount + SumForAccountAndCoin(acct, bidCoin)
                 \* igte is the index of pos in the extended sequence such that:
                 \* 1. pos has a greater or equal to exchange rate than all elements to the left of it (if any)
                 \* 2. pos has a lesser exchange rate than all elements to the right of it (if any) 
@@ -140,6 +140,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                 
             \* ELSE type is stops
             ELSE
+                /\  accounts[acct, askCoin] >= pos.amount + SumForAccountAndCoin(acct, askCoin)
                 \* ilte is the index of pos in the extended sequence such that:
                 \* 1. pos has a less or equal to exchange rate than all elements to the left of it (if any)
                 \* 2. pos has a greater exchange rate than all elements to the right of it (if any) 
@@ -148,7 +149,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                     IF i < ilte
                     THEN GTE(seqOfPos[i].exchrate, pos.exchrate)
                     ELSE GT(pos.exchrate, seqOfPos[i].exchrate)
-                  /\ LET stopsUpd == [ stops EXCEPT ![askCoin, bidCoin] =
+                  /\ LET stopsUpd == [ stops EXCEPT ![bidCoin, askCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
                     ] IN Execute(askCoin, bidCoin, limits, stopsUpd)

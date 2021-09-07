@@ -31,9 +31,15 @@ LET
     
     strikeExchrate ==
         CASE Len(limitBook) = 0 /\ Len(stopBook) = 1 ->
-                Head(stopBook).exchrate
+                << 
+                    stopHead.exchrate[2],
+                    stopHead.exchrate[1]
+                >>
         []   Len(limitBook) = 0 /\ Len(stopBook) > 1 ->
-                stopBook[2].exchrate
+                <<
+                    stopBook[2].exchrate[2],
+                    stopBook[2].exchrate[1]
+                >>
         []   Len(limitBook) > 0 /\ Len(stopBook) = 1 ->
                 Head(limitBook).exchrate
         []   Len(limitBook) > 0 /\ Len(stopBook) > 1 ->
