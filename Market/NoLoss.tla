@@ -65,8 +65,8 @@ LET limitBook == limitsUpd[askCoin, bidCoin]
         strikeExchrate[2]
     strikeAskAmt == 
         IF stopHead.amount <= limitHeadAskAmt
-        THEN    limitHeadAskAmt
-        ELSE    stopHead.amount
+        THEN    stopHead.amount
+        ELSE    limitHeadAskAmt
 IN
 
     /\  accounts' = 
@@ -95,6 +95,7 @@ IN
                             amount |-> stopBook[1].amount - strikeAskAmt
                         ]>> \o Tail(@)
                  ]
+    /\  UNCHANGED << drops, pools, reserve >>
 
 
 =============================================================================

@@ -48,13 +48,10 @@ LET
                 ELSE Head(limitBook).exchrate
     IN
         LET
-            maxPoolAmt == MaxPoolBid(
-                poolExchrate[2], 
+            maxPoolAmt == pools[bidCoin, askCoin] - BidCoinBalFinal(
                 poolExchrate[1], 
-                << 
-                    strikeExchrate[2],
-                    strikeExchrate[1]
-                >>
+                poolExchrate[2], 
+                strikeExchrate
             )
         IN  
             LET strikeAskAmt ==
@@ -67,7 +64,7 @@ LET
                     strikeExchrate[2]
                 ) \div strikeExchrate[1]
             IN
-                /\  IF stopHead.amount <= maxPoolAmt
+                /\  IF stopHead.amount <= strikeAskAmt
                     THEN stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = Tail(@)]
                     ELSE stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = 
                                 <<[

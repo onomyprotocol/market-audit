@@ -12,18 +12,28 @@ LT(a, b) == a[1]*b[2] < a[2]*b[1]
 
 LTE(a, b) == a[1]*b[2] <= a[2]*b[1]
 
+ADDRatio(a, b) == <<(a[1]*b[2] + b[2]*a[1]), a[2] * b[2]>>
+
 (***************************************************************************)
 (* Max amount that pool may sell of ask coin without                       *)
 (* executing the most adjacent order                                       *)
-(*                                                                         *)
-(* b(final) = b(init) as AMM only gives the ask coin.                      *)
-(* a(final) = b(final) * exchrate(final)                                   *)
-(* a(final) = b(init) * exchrate(final)                                    *)
-(* a(diff) = a(init) - a(final)                                            *)
-(* a(diff) = a(init) - b(init) * exchrate(final)                           *)
 (***************************************************************************)
-MaxPoolBid(askBalInit, bidBalInit, erateFinal) ==
-askBalInit - (bidBalInit * erateFinal[1]) \div erateFinal[2]
+BidCoinBalFinal(askBalInit, bidBalInit, erateFinal) ==
+LET erateInit == << askBalInit, bidBalInit >>
+IN
+    bidBalInit * 
+    (
+        (
+            (
+                ADDRatio(<<1, 1>>, erateFinal)[1] * 
+                ADDRatio(<<1, 1>>, erateInit)[2]
+            ) \div
+            (
+                ADDRatio(<<1, 1>>, erateFinal)[2] *
+                ADDRatio(<<1, 1>>, erateInit)[1]
+            )
+        )
+    )
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
 \* all of the position amounts. Returns 0 if seq is empty.
