@@ -64,8 +64,9 @@ LET limitBook == limitsUpd[askCoin, bidCoin]
         (limitHead.amount * strikeExchrate[1]) \div
         strikeExchrate[2]
     strikeAskAmt == 
-        (strikeBidAmt * strikeExchrate[1]) \div
-        strikeExchrate[2]
+        IF stopHead.amount <= limitHeadAskAmt 
+        THEN stopHead.amount
+        ELSE limitHeadAskAmt   
 IN
 
     /\  accounts' = 
@@ -89,9 +90,9 @@ IN
             THEN stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = Tail(@)]
             ELSE stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = 
                         <<[
-                            account |-> stopBook[1].account,
-                            exchrate |-> stopBook[1].exchrate,
-                            amount |-> stopBook[1].amount - strikeAskAmt
+                            account |-> stopHead.account,
+                            exchrate |-> stopHead.exchrate,
+                            amount |-> stopHead.amount - strikeAskAmt
                         ]>> \o Tail(@)
                  ]
     /\  UNCHANGED << drops, pools, reserve >>

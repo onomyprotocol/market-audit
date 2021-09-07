@@ -28,6 +28,7 @@ LET
     limitBook == limitsUpd[askCoin, bidCoin]
     poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
 IN
+
     CASE    Len(stopBook) = 0 /\ Len(limitBook) > 0 -> 
         IF GT(poolExchrate, Head(limitBook).exchrate)
         THEN Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
@@ -43,7 +44,22 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ stops' = stopsUpd
                 /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-    []      OTHER -> UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
+    []      Len(limitBook) > 0 /\ Len(stopBook) > 0 ->
+        IF EQ(
+            <<
+                Head(stopBook).exchrate[2],
+                Head(stopBook).exchrate[1]
+            >>,
+            Head(limitBook).exchrate
+           )
+        THEN NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
+        ELSE UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
+
+    []      OTHER -> 
+        /\  stops' = stopsUpd
+        /\  limits' = limitsUpd
+        /\  UNCHANGED << accounts, drops, pools, reserve >>
+
 (*           
     LET
         limitHead == Head(limitBook)

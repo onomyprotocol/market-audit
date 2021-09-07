@@ -151,7 +151,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                   /\ LET stopsUpd == [ stops EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
-                    ] IN Execute(askCoin, bidCoin, stopsUpd, limits)
+                    ] IN Execute(askCoin, bidCoin, limits, stopsUpd)
 
 Close(acct, askCoin, bidCoin, limitOrStop, pos) == 
     /\  pos.account = acct \* you can only close your own acct's positions
