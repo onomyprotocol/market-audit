@@ -20,8 +20,9 @@ VARIABLE    accounts,
 -----------------------------------------------------------------------------
 
 Limit(askCoin, bidCoin, limitsUpd, stopsUpd) ==
-LET 
-    stopBook == stopsUpd[bidCoin, askCoin]    
+
+
+LET stopBook == stopsUpd[bidCoin, askCoin]    
     limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
     askCoinPoolBalInit == pools[bidCoin, askCoin]
@@ -30,7 +31,7 @@ LET
 
     strikeExchrate ==
         CASE Len(stopBook) = 0 /\ Len(limitBook) = 1 ->
-                Head(limitBook).exchrate
+                limitHead.exchrate
         []   Len(stopBook) = 0 /\ Len(limitBook) > 1 ->
                 limitBook[2].exchrate
         []   Len(stopBook) > 0 /\ Len(limitBook) = 1 ->

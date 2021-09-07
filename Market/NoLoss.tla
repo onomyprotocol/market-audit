@@ -21,7 +21,7 @@ VARIABLE    accounts,
 
 NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 \* Getting to this point means that both an Ask Stop and a Bid
-\* Limit are equal and enabled.
+\* Limit exchange rates are equal and enabled.
 LET limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
     stopBook  == stopsUpd[bidCoin, askCoin]
@@ -57,16 +57,15 @@ LET limitBook == limitsUpd[askCoin, bidCoin]
         (stopHead.amount * strikeExchrate[2]) \div
         strikeExchrate[1]
     strikeBidAmt ==
-        IF limitBook[1].amount <= stopHeadBidAmt
-        THEN    limitBook[1].amount
+        IF limitHead.amount <= stopHeadBidAmt
+        THEN    limitHead.amount
         ELSE    stopHeadBidAmt
     limitHeadAskAmt ==
         (limitHead.amount * strikeExchrate[1]) \div
         strikeExchrate[2]
     strikeAskAmt == 
-        IF stopHead.amount <= limitHeadAskAmt
-        THEN    stopHead.amount
-        ELSE    limitHeadAskAmt
+        (strikeBidAmt * strikeExchrate[1]) \div
+        strikeExchrate[2]
 IN
 
     /\  accounts' = 

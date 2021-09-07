@@ -33,8 +33,7 @@ IN
         THEN Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ limits' = limitsUpd
                 /\ UNCHANGED << accounts, drops, pools, reserve, stops >>
-    []      OTHER -> /\ UNCHANGED << accounts, drops, limits, pools, stops, reserve >>
-(*    []      Len(limitBook) = 0 /\ Len(stopBook) > 0 ->
+    []      Len(limitBook) = 0 /\ Len(stopBook) > 0 ->
         IF GT(poolExchrate,
             <<
                 Head(stopBook).exchrate[2],
@@ -44,8 +43,8 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE    /\ stops' = stopsUpd
                 /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-    []      OTHER -> /\ UNCHANGED << accounts, drops, limits, pools, stops, reserve >>
-           
+    []      OTHER -> UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
+(*           
     LET
         limitHead == Head(limitBook)
         stopHead == Head(stopBook)
@@ -99,5 +98,5 @@ IN
                     []      OTHER -> 
                         /\  limits' = limitsUpd
                         /\  UNCHANGED << accounts, drops, pools, reserve, stops >>
-*)            
+*)   
 =============================================================================

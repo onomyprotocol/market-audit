@@ -25,7 +25,10 @@ LET
     stopHead == Head(stopBook)
     stopHeadInvExchrate == << stopHead.exchrate[2], stopHead.exchrate[1] >>
     limitBook == limitsUpd[askCoin, bidCoin]
-    poolExchrate == << pools[bidCoin, askCoin], pools[askCoin, bidCoin] >>
+    askCoinPoolBalInit == pools[bidCoin, askCoin]
+    bidCoinPoolBalInit == pools[askCoin, bidCoin]
+    poolExchrate == << askCoinPoolBalInit,  bidCoinPoolBalInit >>
+    
     strikeExchrate ==
         CASE Len(limitBook) = 0 /\ Len(stopBook) = 1 ->
                 Head(stopBook).exchrate
@@ -48,16 +51,20 @@ LET
                 ELSE Head(limitBook).exchrate
     IN
         LET
-            maxPoolAmt == pools[bidCoin, askCoin] - BidCoinBalFinal(
-                poolExchrate[1], 
+            maxAskCoinPoolBalFinal == BidCoinBalFinal(
                 poolExchrate[2], 
-                strikeExchrate
+                poolExchrate[1], 
+                << 
+                    strikeExchrate[2],
+                    strikeExchrate[1]
+                >>  
             )
+            maxPoolAsk == maxAskCoinPoolBalFinal - askCoinPoolBalInit
         IN  
             LET strikeAskAmt ==
-                    IF stopHead.amount <= maxPoolAmt
+                    IF stopHead.amount <= maxPoolAsk
                     THEN stopHead.amount
-                    ELSE maxPoolAmt
+                    ELSE maxPoolAsk
 
                 strikeBidAmt == (
                     strikeAskAmt *
