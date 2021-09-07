@@ -19,7 +19,7 @@ VARIABLE    accounts,
 
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
-INSTANCE Execute2
+INSTANCE Execute
 -----------------------------------------------------------------------------
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 \* PositionInv( limitsSeq, stopsSeq, balance ) ==
