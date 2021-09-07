@@ -46,16 +46,8 @@ IN
         THEN Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
         ELSE /\ stops' = stopsUpd
              /\ UNCHANGED << accounts, drops, limits, pools, reserve >>
-(*
     []      Len(stopBook) > 0 /\ Len(limitBook) > 0 ->
-        NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
-*)
-    []      OTHER ->
-        /\ limits' = limitsUpd
-        /\ stops' = stopsUpd
-        /\ UNCHANGED << accounts, drops, pools, reserve >>
-(*
-
+        
         LET
             limitHead == Head(limitBook)
             stopHead == Head(stopBook)
@@ -93,6 +85,8 @@ IN
             (***********************************************************************)
             []      LT(stopHeadInvExchrate, limitHead.exchrate) ->
                 Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
+            []      OTHER ->
+                Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
         (***************************************************************************)
         (* CASE 2: The Pool Exchange Rate (Ask Coin Bal / Bid Coin Bal) greater    *)
         (*         than Bid Limit Book Exchange Rate                               *)
@@ -110,5 +104,5 @@ IN
             []      OTHER -> 
                 /\  limits' = limitsUpd
                 /\  UNCHANGED << accounts, drops, pools, reserve, stops >>
-*)               
+             
 =============================================================================
