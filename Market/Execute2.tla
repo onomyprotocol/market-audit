@@ -32,10 +32,10 @@ IN
         UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
     []      Len(limitBook) > 0 /\ Len(stopBook) = 0 ->
         Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
-    (*
+    
     []      Len(stopBook) > 0 /\ Len(limitBook) = 0 ->
         Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
-    *)
+    
     []      OTHER ->
         /\ limits' = limitsUpd
         /\ stops' = stopsUpd
