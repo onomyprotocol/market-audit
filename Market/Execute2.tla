@@ -31,11 +31,15 @@ IN
     CASE    Len(limitBook) = 0 /\ Len(stopBook) = 0 ->
         UNCHANGED << accounts, drops, limits, pools, reserve, stops >>
     []      Len(limitBook) > 0 /\ Len(stopBook) = 0 ->
-        Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
-    
-    []      Len(stopBook) > 0 /\ Len(limitBook) = 0 ->
+        IF GT(poolExchrate, limitBook[1].exchrate) 
+        THEN Limit(askCoin, bidCoin, limitsUpd, stopsUpd)
+        ELSE /\ limits' = limitsUpd
+             /\ UNCHANGED << accounts, drops, pools, reserve, stops >>
+(*    []      Len(stopBook) > 0 /\ Len(limitBook) = 0 ->
         Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
-    
+    []      Len(stopBook) > 0 /\ Len(limitBook) > 0 ->
+        NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
+*)
     []      OTHER ->
         /\ limits' = limitsUpd
         /\ stops' = stopsUpd
