@@ -28,27 +28,36 @@ LET stopBook == stopsUpd[bidCoin, askCoin]
     askCoinPoolBalInit == pools[bidCoin, askCoin]
     bidCoinPoolBalInit == pools[askCoin, bidCoin]
     poolExchrate == << askCoinPoolBalInit,  bidCoinPoolBalInit >>
+    stopHeadInvExchrate == <<
+        Head(stopBook).exchrate[2],
+        Head(stopBook).exchrate[1]
+    >>
 
     strikeExchrate ==
         CASE Len(stopBook) = 0 /\ Len(limitBook) = 1 ->
-                limitHead.exchrate
+             poolExchrate
         []   Len(stopBook) = 0 /\ Len(limitBook) > 1 ->
-                limitBook[2].exchrate
+            IF GT(poolExchrate, limitBook[2].exchrate)
+            THEN poolExchrate
+            ELSE limitBook[2].exchrate
         []   Len(stopBook) > 0 /\ Len(limitBook) = 1 ->
-                <<
-                    Head(stopBook).exchrate[2],
-                    Head(stopBook).exchrate[1]
-                >>
+            IF GT(poolExchrate, stopHeadInvExchrate)
+            THEN poolExchrate
+            ELSE stopHeadInvExchrate
         []   Len(stopBook) > 0 /\ Len(limitBook) > 1 ->
-                LET stopHeadInvExchrate == <<
-                        Head(stopBook).exchrate[2],
-                        Head(stopBook).exchrate[1]
-                    >>
-                IN
-                    IF LT(limitBook[2].exchrate, stopHeadInvExchrate)
-                    THEN limitBook[2].exchrate
-                    ELSE stopHeadInvExchrate
-
+            \* Determine the most adjacent order which is the
+            \* lesser of the next limit or stop head
+            IF LT(limitBook[2].exchrate, stopHeadInvExchrate)    
+            THEN \* IF Pool Exchrate is Greater than
+                 \* Second Limit Book Order 
+                IF GT(poolExchrate, limitBook[2].exchrate)
+                THEN poolExchrate
+                ELSE limitBook[2].exchrate
+            ELSE \* If Pool Exchrate is Greater than
+                 \* Ask Stop Head Inverse Exchange Rate
+                 IF GT(poolExchrate, stopHeadInvExchrate)
+                 THEN poolExchrate
+                 ELSE stopHeadInvExchrate
     IN
         LET
             maxBidCoinPoolBalFinal == BidCoinBalFinal(
