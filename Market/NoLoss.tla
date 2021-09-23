@@ -26,33 +26,43 @@ LET limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
     stopBook  == stopsUpd[bidCoin, askCoin]
     stopHead == Head(stopBook)
+    stopHeadInvExchrate == << stopHead.exchrate[2], stopHead.exchrate[1] >>
+    stopSecondInvExchrate ==
+        <<
+            stopBook[2].exchrate[2],
+            stopBook[2].exchrate[1]
+        >>
+    askCoinPoolBalInit == pools[bidCoin, askCoin]
+    bidCoinPoolBalInit == pools[askCoin, bidCoin]
+    poolExchrate == << askCoinPoolBalInit,  bidCoinPoolBalInit >>
+    
     
     \* Strike Exchrate either limit or stop as equal
     strikeExchrate ==
         CASE Len(limitBook) = 1 /\ Len(stopBook) = 1 ->
-                limitHead.exchrate
+                poolExchrate
         []   Len(limitBook) > 1 /\ Len(stopBook) = 1 ->
-                limitBook[2].exchrate
+                IF GT(poolExchrate, limitBook[2].exchrate)
+                THEN poolExchrate
+                ELSE limitBook[2].exchrate
         []   Len(limitBook) = 1 /\ Len(stopBook) > 1 ->
-                << 
-                    stopBook[2].exchrate[2],
-                    stopBook[2].exchrate[1]
-                >>
+                IF GT(poolExchrate, stopSecondInvExchrate)
+                THEN poolExchrate
+                ELSE stopSecondInvExchrate
         []   Len(limitBook) > 1 /\ Len(stopBook) > 1 ->
-                \* Strike price is based on the most adjacent
-                \* order based on price.
-                IF LTE(
-                        limitBook[2].exchrate,
-                        <<
-                            stopBook[2].exchrate[2],
-                            stopBook[2].exchrate[1]
-                        >>
-                    )
-                THEN limitBook[2].exchrate
-                ELSE <<
-                        stopBook[2].exchrate[2],
-                        stopBook[2].exchrate[1]
-                    >>
+                \* Determine the most adjacent order which is the
+                \* lesser of the next stop or limit head
+                IF LT(stopSecondInvExchrate, limitBook[2].exchrate)    
+                THEN \* IF Pool Exchrate is Greater than
+                    \* Second Limit Book Order Exchange Rate 
+                    IF GT(poolExchrate, stopSecondInvExchrate)
+                    THEN poolExchrate
+                    ELSE stopSecondInvExchrate
+                ELSE \* If Pool Exchrate is Greater than
+                    \* Second Limit Book Order Exchange Rate
+                    IF GT(poolExchrate, limitBook[2].exchrate)
+                    THEN poolExchrate
+                    ELSE limitBook[2].exchrate
     stopHeadBidAmt == 
         (stopHead.amount * strikeExchrate[2]) \div
         strikeExchrate[1]
