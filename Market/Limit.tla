@@ -63,7 +63,7 @@ LET stopBook == stopsUpd[bidCoin, askCoin]
             maxBidCoinPoolBalFinal == BidCoinBalFinal(
                 poolExchrate[1], 
                 poolExchrate[2], 
-                strikeExchrate
+                limitHead.exchrate
             )
             maxPoolBid == maxBidCoinPoolBalFinal - bidCoinPoolBalInit
         IN  
