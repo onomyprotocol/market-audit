@@ -38,28 +38,11 @@ LET
         CASE Len(limitBook) = 0 /\ Len(stopBook) = 1 ->
                 poolExchrate
         []   Len(limitBook) = 0 /\ Len(stopBook) > 1 ->
-                IF GT(poolExchrate, stopSecondInvExchrate)
-                THEN poolExchrate
-                ELSE stopSecondInvExchrate
-        []   Len(limitBook) > 0 /\ Len(stopBook) = 1 ->
+                poolExchrate
+        []   Len(limitBook) > 0 /\ Len(stopBook) > 0 ->
                 IF GT(poolExchrate, Head(limitBook).exchrate)
                 THEN poolExchrate
                 ELSE Head(limitBook).exchrate
-        []   Len(limitBook) > 0 /\ Len(stopBook) > 1 ->
-                
-                    \* Determine the most adjacent order which is the
-                    \* lesser of the next stop or limit head
-                    IF LT(stopSecondInvExchrate, Head(limitBook).exchrate)    
-                    THEN \* IF Pool Exchrate is Greater than
-                        \* Second Limit Book Order 
-                        IF GT(poolExchrate, stopSecondInvExchrate)
-                        THEN poolExchrate
-                        ELSE stopSecondInvExchrate
-                    ELSE \* If Pool Exchrate is Greater than
-                        \* Ask Stop Head Inverse Exchange Rate
-                        IF GT(poolExchrate, Head(limitBook).exchrate)
-                        THEN poolExchrate
-                        ELSE Head(limitBook).exchrate
     IN
         LET
             maxAskCoinPoolBalFinal == BidCoinBalFinal(
