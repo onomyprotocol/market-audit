@@ -21,18 +21,8 @@ ADDRatio(a, b) == <<(a[1]*b[2] + b[2]*a[1]), a[2] * b[2]>>
 BidCoinBalFinal(askBalInit, bidBalInit, erateFinal) ==
 LET erateInit == << askBalInit, bidBalInit >>
 IN
-    bidBalInit * 
-    (
-        (
-            (
-                ADDRatio(<<1, 1>>, erateFinal)[1] * 
-                ADDRatio(<<1, 1>>, erateInit)[2]
-            ) \div
-            (
-                ADDRatio(<<1, 1>>, erateFinal)[2] *
-                ADDRatio(<<1, 1>>, erateInit)[1]
-            )
-        )
+    (askBalInit + bidBalInit) \div (
+        (erateFinal[2] + erateFinal[1]) \div erateFinal[1]
     )
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
