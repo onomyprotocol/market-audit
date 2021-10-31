@@ -65,25 +65,13 @@ IN
         (***************************************************************************)
         CASE    GTE(poolExchrate, stopHeadInvExchrate) ->
             (***********************************************************************)
-            (* CASE 1.1: Inverse Exchange Rate of the head of the Ask Stop Book    *)
-            (*           is equal to exchange rate of the head of the Bid Limit    *)
-            (*           book                                                      *)
-            (*                                                                     *)
-            (*   Action: Execute no loss trade                                     *)
-            (***********************************************************************)
-            CASE    EQ(limitHead.exchrate, stopHeadInvExchrate) ->
-                \* The only parameters needed to execute a no-loss trade is
-                \* the ask coin and the bid coin.
-                NoLoss(askCoin, bidCoin, limitsUpd, stopsUpd)
-                     
-            (***********************************************************************)
             (* CASE 1.2: Inverse Exchange Rate of the head of the Ask Stop Book    *)
             (*           is less than the exchange rate of the head of the Bid     *)
             (*           Limit book                                                *)
             (*                                                                     *)
             (*   Action: Execute Ask Stop Order                                    *)
             (***********************************************************************)
-            []      LT(stopHeadInvExchrate, limitHead.exchrate) ->
+            CASE    LT(stopHeadInvExchrate, limitHead.exchrate) ->
                 Stop(askCoin, bidCoin, limitsUpd, stopsUpd)
             []      OTHER ->
                 Limit(askCoin, bidCoin, limitsUpd, stopsUpd)

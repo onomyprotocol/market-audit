@@ -19,7 +19,8 @@ VARIABLE    accounts,
 
 vars == <<accounts, drops, limits, pools, reserve, stops>>
 
-INSTANCE Execute
+INSTANCE Limit
+INSTANCE Stop
 -----------------------------------------------------------------------------
 \* Asserts that balance covers the sum of all position amounts in limitsSeq and stopsSeq
 \* PositionInv( limitsSeq, stopsSeq, balance ) ==
@@ -136,7 +137,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                   /\ LET limitsUpd == [ limits EXCEPT ![askCoin, bidCoin] =
                         \* InsertAt: Inserts element pos at the position igte moving the original element to igte+1
                         InsertAt(@, igte, pos)
-                     ] IN Execute(askCoin, bidCoin, limitsUpd, stops)
+                     ] IN Limit(askCoin, bidCoin, limitsUpd, stops)
                 
             \* ELSE type is stops
             ELSE
@@ -152,7 +153,7 @@ Open(acct, askCoin, bidCoin, limitOrStop, pos) ==
                   /\ LET stopsUpd == [ stops EXCEPT ![bidCoin, askCoin] =
                         \* InsertAt: Inserts element pos at the position ilte moving the original element to ilte+1
                         InsertAt(@, ilte, pos)
-                    ] IN Execute(askCoin, bidCoin, limits, stopsUpd)
+                    ] IN Stop(askCoin, bidCoin, limits, stopsUpd)
 
 Close(acct, askCoin, bidCoin, limitOrStop, pos) == 
     /\  pos.account = acct \* you can only close your own acct's positions

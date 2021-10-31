@@ -18,12 +18,8 @@ ADDRatio(a, b) == <<(a[1]*b[2] + b[2]*a[1]), a[2] * b[2]>>
 (* Max amount that pool may sell of ask coin without                       *)
 (* executing the most adjacent order                                       *)
 (***************************************************************************)
-BidCoinBalFinal(askBalInit, bidBalInit, erateFinal) ==
-LET erateInit == << askBalInit, bidBalInit >>
-IN
-    (askBalInit + bidBalInit) \div (
-        (erateFinal[2] + erateFinal[1]) \div erateFinal[1]
-    )
+BidCoinBalFinal(memberABal, memberBBal, positionRate) ==
+(((positionRate[1] * 100) \div (positionRate[1] + positionRate[0])) * (memberABal + memberBBal)) \div 100
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
 \* all of the position amounts. Returns 0 if seq is empty.

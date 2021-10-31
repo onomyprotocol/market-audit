@@ -21,43 +21,23 @@ VARIABLE    accounts,
 
 Limit(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 
-
-LET stopBook == stopsUpd[bidCoin, askCoin]    
-    limitBook == limitsUpd[askCoin, bidCoin]
+LET limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
     askCoinPoolBalInit == pools[bidCoin, askCoin]
     bidCoinPoolBalInit == pools[askCoin, bidCoin]
     poolExchrate == << askCoinPoolBalInit,  bidCoinPoolBalInit >>
-    stopHeadInvExchrate == <<
-        Head(stopBook).exchrate[2],
-        Head(stopBook).exchrate[1]
-    >>
-
-    strikeExchrate ==
-        CASE Len(stopBook) = 0 /\ Len(limitBook) = 1 ->
-             poolExchrate
-        []   Len(stopBook) = 0 /\ Len(limitBook) > 1 ->
-            IF GT(poolExchrate, limitBook[2].exchrate)
-            THEN poolExchrate
-            ELSE limitBook[2].exchrate
-        []   Len(stopBook) > 0 /\ Len(limitBook) = 1 ->
-            IF GT(poolExchrate, stopHeadInvExchrate)
-            THEN poolExchrate
-            ELSE stopHeadInvExchrate
-        []   Len(stopBook) > 0 /\ Len(limitBook) > 1 ->
-            \* Determine the most adjacent order which is the
-            \* lesser of the next limit or stop head
-            IF LT(limitBook[2].exchrate, stopHeadInvExchrate)    
-            THEN \* IF Pool Exchrate is Greater than
-                 \* Second Limit Book Order 
-                IF GT(poolExchrate, limitBook[2].exchrate)
-                THEN poolExchrate
-                ELSE limitBook[2].exchrate
-            ELSE \* If Pool Exchrate is Greater than
-                 \* Ask Stop Head Inverse Exchange Rate
-                 IF GT(poolExchrate, stopHeadInvExchrate)
-                 THEN poolExchrate
-                 ELSE stopHeadInvExchrate
+IN
+\* Enabling Condition
+\* AMM Pool Exchange Rate must be Greater than Limit Book Head
+/\  GT(poolExchrate, limitHead)
+/\  LET
+    maxMemberBBal == bidCoinBalFinal(
+        askCoinPoolBalInit, 
+        bidCoinPoolBalInit,
+        limitHead.rate
+    )
+    
+    
     IN
         LET
             maxBidCoinPoolBalFinal == BidCoinBalFinal(
