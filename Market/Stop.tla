@@ -23,66 +23,44 @@ Stop(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 LET 
     stopBook == stopsUpd[bidCoin, askCoin]    
     stopHead == Head(stopBook)
-    stopHeadInvExchrate == << stopHead.exchrate[2], stopHead.exchrate[1] >>
-    limitBook == limitsUpd[askCoin, bidCoin]
-    askCoinPoolBalInit == pools[bidCoin, askCoin]
-    bidCoinPoolBalInit == pools[askCoin, bidCoin]
-    poolExchrate == << askCoinPoolBalInit,  bidCoinPoolBalInit >>
-    stopSecondInvExchrate ==
-        <<
-            stopBook[2].exchrate[2],
-            stopBook[2].exchrate[1]
-        >>
-    
-    strikeExchrate ==
-        CASE Len(limitBook) = 0 /\ Len(stopBook) = 1 ->
-                poolExchrate
-        []   Len(limitBook) = 0 /\ Len(stopBook) > 1 ->
-                poolExchrate
-        []   Len(limitBook) > 0 /\ Len(stopBook) > 0 ->
-                IF GT(poolExchrate, Head(limitBook).exchrate)
-                THEN poolExchrate
-                ELSE Head(limitBook).exchrate
+    memberABal == pools[bidCoin, askCoin]
+    memberBBal == pools[askCoin, bidCoin]
+    poolExchrate == << memberABal,  memberBBal >>
     IN
-        LET
-            maxAskCoinPoolBalFinal == BidCoinBalFinal(
-                poolExchrate[2], 
-                poolExchrate[1], 
-                << 
-                    strikeExchrate[2],
-                    strikeExchrate[1]
-                >>  
-            )
-            maxPoolAsk == maxAskCoinPoolBalFinal - askCoinPoolBalInit
-        IN  
-            LET strikeAskAmt ==
-                    IF stopHead.amount <= maxPoolAsk
-                    THEN stopHead.amount
-                    ELSE maxPoolAsk
+\* Enabling Condition
+\* AMM Pool Exchange Rate must be Less than Stop Book Head
+/\ LT(poolExchrate, stopHead.exchrate)
 
-                strikeBidAmt == (
-                    strikeAskAmt *
-                    strikeExchrate[2]
-                ) \div strikeExchrate[1]
-            IN
-                /\  IF stopHead.amount <= strikeAskAmt
-                    THEN stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = Tail(@)]
-                    ELSE stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = 
-                                <<[
-                                    account |-> stopBook[1].account,
-                                    exchrate |-> stopBook[1].exchrate,
-                                    amount |-> stopBook[1].amount - strikeAskAmt
-                                ]>> \o Tail(@)
-                         ]
-                /\  accounts' = 
-                    [ accounts EXCEPT 
-                        ![stopBook[1].account, bidCoin] = @ + strikeBidAmt,
-                        ![stopBook[1].account, askCoin] = @ - strikeAskAmt
-                    ] 
-                /\  pools' = 
-                    [ pools EXCEPT
-                        ![askCoin, bidCoin] = @ - strikeBidAmt,
-                        ![bidCoin, askCoin] = @ + strikeAskAmt 
-                    ]
-                /\  UNCHANGED <<drops, reserve, limits>>
+/\ LET
+        minMemberABal == memberABal \div 2
+        maxMemberBBal == memberABal + memberBBal - minMemberABal
+        maxMemberBAmt == maxMemberBBal - memberBBal
+   IN
+        LET strikeBidAmt ==
+                IF stopHead.amount > maxMemberBAmt
+                THEN maxMemberBAmt
+                ELSE stopHead.amount
+                
+            strikeAskAmt == (strikeBidAmt * (memberABal - strikeBidAmt)) \div (memberBBal + strikeBidAmt)  
+        IN
+            /\  IF stopHead.amount <= strikeAskAmt
+                THEN stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = Tail(@)]
+                ELSE stops' = [stopsUpd EXCEPT ![bidCoin, askCoin] = 
+                            <<[
+                                account |-> stopBook[1].account,
+                                exchrate |-> stopBook[1].exchrate,
+                                amount |-> stopBook[1].amount - strikeAskAmt
+                            ]>> \o Tail(@)
+                     ]
+            /\  accounts' = 
+                [ accounts EXCEPT 
+                    ![stopBook[1].account, bidCoin] = @ + strikeBidAmt,
+                    ![stopBook[1].account, askCoin] = @ - strikeAskAmt
+                ] 
+            /\  pools' = 
+                [ pools EXCEPT
+                    ![askCoin, bidCoin] = @ - strikeBidAmt,
+                    ![bidCoin, askCoin] = @ + strikeAskAmt 
+                ]
+            /\  UNCHANGED <<drops, reserve, limits>>
 =============================================================================

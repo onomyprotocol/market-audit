@@ -20,7 +20,6 @@ VARIABLE    accounts,
 -----------------------------------------------------------------------------
 
 Limit(askCoin, bidCoin, limitsUpd, stopsUpd) ==
-
 LET limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
     memberABal == pools[bidCoin, askCoin]
