@@ -19,7 +19,7 @@ ADDRatio(a, b) == <<(a[1]*b[2] + b[2]*a[1]), a[2] * b[2]>>
 (* executing the most adjacent order                                       *)
 (***************************************************************************)
 BidCoinBalFinal(memberABal, memberBBal, positionRate) ==
-(((positionRate[1] * 100) \div (positionRate[1] + positionRate[0])) * (memberABal + memberBBal)) \div 100
+(((positionRate[2] * 100) \div (positionRate[2] + positionRate[1])) * (memberABal + memberBBal)) \div 100
 
 \* Given a sequence of positions `seq \in Seq(PositionType)`, sum up
 \* all of the position amounts. Returns 0 if seq is empty.

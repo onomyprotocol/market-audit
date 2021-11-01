@@ -23,41 +23,34 @@ Limit(askCoin, bidCoin, limitsUpd, stopsUpd) ==
 
 LET limitBook == limitsUpd[askCoin, bidCoin]
     limitHead == Head(limitBook)
-    askCoinPoolBalInit == pools[bidCoin, askCoin]
-    bidCoinPoolBalInit == pools[askCoin, bidCoin]
-    poolExchrate == << askCoinPoolBalInit,  bidCoinPoolBalInit >>
+    memberABal == pools[bidCoin, askCoin]
+    memberBBal == pools[askCoin, bidCoin]
+    poolExchrate == << memberABal,  memberBBal >>
 IN
 \* Enabling Condition
 \* AMM Pool Exchange Rate must be Greater than Limit Book Head
-/\  GT(poolExchrate, limitHead)
-/\  LET
-    maxMemberBBal == bidCoinBalFinal(
-        askCoinPoolBalInit, 
-        bidCoinPoolBalInit,
-        limitHead.rate
-    )
-    
-    
-    IN
-        LET
-            maxBidCoinPoolBalFinal == BidCoinBalFinal(
-                poolExchrate[1], 
-                poolExchrate[2], 
-                limitHead.exchrate
-            )
-            maxPoolBid == maxBidCoinPoolBalFinal - bidCoinPoolBalInit
-        IN  
-            LET strikeBidAmt ==
-                    IF limitHead.amount <= maxPoolBid
-                    THEN limitHead.amount
-                    ELSE maxPoolBid
+/\  GT(poolExchrate, limitHead.exchrate)
 
-                strikeAskAmt == (
-                    strikeBidAmt *
-                    strikeExchrate[1]
-                ) \div strikeExchrate[2]
+/\  LET
+        maxMemberBBal == BidCoinBalFinal(
+            memberABal, 
+            memberBBal,
+            limitHead.exchrate
+        )
+        
+        \* Maximum amount of the Bid Coin that the AMM may accept at Limit Order Exchange Rate
+        maxBidAmt == maxMemberBBal - memberBBal
+    IN
+      LET strikeBidAmt == IF limitHead.amount <= maxBidAmt
+                          THEN limitHead.amount
+                          ELSE maxBidAmt
+
+          strikeAskAmt == ((
+                            strikeBidAmt *
+                            limitHead.exchrate[1] * 10
+                          ) \div limitHead.exchrate[2]) \div 10
             IN
-                /\  IF limitHead.amount <= maxPoolBid
+                /\  IF limitHead.amount <= maxBidAmt
                     THEN limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = Tail(@)]
                     ELSE limits' = [limitsUpd EXCEPT ![askCoin, bidCoin] = 
                                 <<[
